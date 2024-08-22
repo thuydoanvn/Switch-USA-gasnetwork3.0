@@ -1,4 +1,3 @@
-# cd ~/UHdrive/NationalSwitch/switch_gas2
 #### GAS WELLS by Drill Type and GAS ZONES
 import os
 from pyomo.environ import *
@@ -30,13 +29,15 @@ def define_components(m):
     m.production_rate_mmbtud = Param(
         m.GAS_WELL_IN_ZONE_PRODYEAR,
         within=NonNegativeReals,
-        default = 0 # if production rate is not available, then assume no well production
+        # if production rate is not available, then assume no well production
+        default = 0 
     )
     m.well_capital_cost = Param(
         m.GAS_WELL_IN_ZONE,
         within=PositiveReals,
         # https://www.tidalpetroleum.com/processes/drilling-cost and https://www.tidalpetroleum.com/processes/completion-cost 
-        default=5000000, # $5 million is about max value of capital cost in the data
+        # $5 million is about max value of capital cost in the data
+        default=5000000, 
     )
 
     m.gas_well_max_age = Param(
@@ -56,7 +57,7 @@ def define_components(m):
     # how many well to build each period
     def bounds_BuildWell(model, z, dt, bld_yr):
         if((z, dt, bld_yr) in model.BLD_YRS_FOR_EXISTING_GAS_WELL):
-            return (model.gas_well_predet_num[z,dt,bld_yr], #number of gas well by drill type built at a given year
+            return (model.gas_well_predet_num[z,dt,bld_yr], 
                     model.gas_well_predet_num[z,dt,bld_yr])
         else:
             return (0, None)
@@ -74,7 +75,8 @@ def define_components(m):
     m.max_gas_well_build_year = Param(
         m.GAS_ZONES,
         within=NonNegativeReals,
-        default=0) # if no data, then not build any well
+        # if no data, then do not build any well
+        default=0) 
 
     m.Gas_Well_Upper_Limit = Constraint(
         m.GAS_ZONES,
@@ -82,7 +84,7 @@ def define_components(m):
         rule=lambda m, z, p: Constraint.Skip
         if not m.gas_well_new_build_allowed[z]
         else (sum(m.BuildWellNum[z, dt, p] for dt in m.DRILL_TYPE) <= 
-              m.max_gas_well_build_year[z]), #* m.period_length_years[p]),
+              m.max_gas_well_build_year[z]),
     )
 
     # Some projects are retired before the first study period, so they
@@ -144,6 +146,7 @@ def define_components(m):
             m.BuildWellNum[z, dt, bld_yr]
             for bld_yr in m.BLD_YRS_FOR_WELL_PERIOD[z,dt,period]
             if bld_yr == period - prod_yr + 1))
+    
     #Gas Supply Quantity is a sum of WellProductionCapacity, i.e.production capacity across wells in each zone in a given timeseries
     m.GasSupplyQuantityByType = Expression(
         m.GAS_WELL_IN_ZONE, m.TIMESERIES,
@@ -174,7 +177,7 @@ def define_components(m):
 def load_inputs(m, gas_switch_data, inputs_dir):
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, 'drill_type.csv'),
-        # select=('DRILL_TYPE', 'gas_well_max_age'),
+        select=('DRILL_TYPE', 'gas_well_max_age'),
         index=m.DRILL_TYPE,
         param=m.gas_well_max_age
     )
@@ -191,13 +194,11 @@ def load_inputs(m, gas_switch_data, inputs_dir):
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, 'gas_well_production_curve_annual.csv'),
         select=('GAS_ZONES','DRILL_TYPE','PROD_YEAR','gas_production_rate_mmbtud'),
-        # index=m.GAS_WELL_IN_ZONE_PRODYEAR, #3-dimension index(zone, drill type, production year)
         param=(m.production_rate_mmbtud)
     )
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, 'gas_well_capital_cost.csv'),
         select=('GAS_ZONES','DRILL_TYPE','well_capital_cost'),
-        # index=m.GAS_WELL_IN_ZONE, #2-dimension index(zone, drill type)
         param=(m.well_capital_cost)
     )
     gas_switch_data.load_aug(

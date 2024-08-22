@@ -1,6 +1,3 @@
-# switch solve --solver cplexamp --verbose --stream-solver
-### Remove constraint on production by using RelaxBalanceUp and RelaxBalanceDown at the supply price
-
 import os
 from pyomo.environ import *
 from switch_model.reporting import write_table
@@ -9,11 +6,20 @@ dependencies = "switch_model.timescales", "switch_model.financials"
 
 
 def define_components(m):
-    # Relax balance to get balance constraint feasibility
+    # Relax balance to get balance constraint feasibility by using 
+    # RelaxBalanceUp and RelaxBalanceDown at a penalty cost
+
+    # Additional supply for insufficient gas
     m.RelaxBalanceUp = Var(
         m.GAS_ZONES_TIMESERIES, within=NonNegativeReals
-    )  # Additional supply
+    ) 
+    # Diposal of excess gas 
     m.RelaxBalanceDown = Var(m.GAS_ZONES_TIMESERIES, within=NonNegativeReals)
+
+    # Disposing cost accounts for the cost of flaring or venting the gas
+    # Gas price may go negative to avoid disposal cost
+    # Set this parameter to 0 if allow free disposal. 
+    m.gas_disposing_cost = Param(within=NonNegativeReals, default=1)
 
     m.Zone_Gas_Injections.append("RelaxBalanceUp")
     m.Zone_Gas_Withdrawals.append("RelaxBalanceDown")
@@ -22,7 +28,7 @@ def define_components(m):
         m.PERIODS,
         rule=lambda m, p: sum(
             # set very high price for Relax balance so it will force to optimize by build storage/pipeline OR
-            # Set high price (ex. as much as $15/MMBtu) so the demand (that exceed supply) will be switched to other source of energy
+            # for the excessive demand to switch to other source of energy
             1e6 * (m.RelaxBalanceUp[z, ts])
             for (z, ts) in m.GAS_ZONES_TIMESERIES
             if m.ts_period[ts] == p
@@ -31,8 +37,7 @@ def define_components(m):
     m.DisposalCost = Expression(
         m.PERIODS,
         rule=lambda m, p: sum(
-            # add $1/MMBtu as the cost of disposing the excess gas. This accounts for the cost of flaring or venting the gas + GHG emissions
-            1 * (m.RelaxBalanceDown[z, ts])
+            m.gas_disposing_cost * (m.RelaxBalanceDown[z, ts])
             for (z, ts) in m.GAS_ZONES_TIMESERIES
             if m.ts_period[ts] == p
         ),
@@ -52,7 +57,15 @@ def define_dynamic_components(m):
     if not hasattr(m, "dual"):
         m.dual = Suffix(direction=Suffix.IMPORT)
 
-
+def load_inputs(m, gas_switch_data, inputs_dir):
+    gas_switch_data.load_aug(
+        filename=os.path.join(inputs_dir, 'gas_disposing_cost.csv'),
+        select=('gas_disposing_cost',),
+        param=(
+        m.gas_disposing_cost,
+        )
+    )
+    
 def post_solve(instance, outdir):
     mod = instance
     # infrastructure built
@@ -65,7 +78,6 @@ def post_solve(instance, outdir):
             "storage_type",
             "period",
             "gas_storage_new_build_cap",
-            # "gas_storage_removed_cap",
             "gas_storage_total_cap",
         ),
         values=lambda m, z, ty, p: (
@@ -73,7 +85,6 @@ def post_solve(instance, outdir):
             ty,
             p,
             m.BuildStorageCap[z, ty, p],
-            # m.gas_storage_removed_cap[z, ty, p],
             m.GasStorageCapacity[z, ty, p],
         ),
     )
@@ -88,10 +99,8 @@ def post_solve(instance, outdir):
             "period",
             "GAS_LINES",
             "gas_line_build_directional_cap",
-            # "gas_line_removed_directional_cap",
             "gas_line_directional_total_cap",
             "gas_line_build_general_cap",
-            # "gas_line_removed_general_cap",
             "gas_line_general_total_cap",
         ),
         values=lambda m, zone_from, zone_to, p: (
@@ -100,10 +109,8 @@ def post_solve(instance, outdir):
             p,
             m.gas_d_line[zone_from, zone_to],
             m.BuildDirectionalGl[zone_from, zone_to, p],
-            # m.gas_line_removed_cap_directional[zone_from, zone_to, p],
             m.DirectionalGlCapacityNameplate[zone_from, zone_to, p],
             m.BuildGl[m.gas_d_line[zone_from, zone_to], p],
-            # m.gas_line_removed_cap_general[m.gas_d_line[zone_from, zone_to], p],
             m.GlCapacityNameplate[m.gas_d_line[zone_from, zone_to], p],
         ),
     )
@@ -133,16 +140,6 @@ def post_solve(instance, outdir):
         ),
     )
     # Gas flows and volumes
-    # write_table(
-    #     instance, instance.GAS_LINES_TIMESERIES,
-    #     output_file=os.path.join(outdir, "gas_line_dispatch.csv"), #automatically export within SWITCH
-    #     headings=("gas_line_gz1","gas_line_gz2","timeseries",
-    #               "gas_line_dispatch_mmbtu"),
-    #     values=lambda m, zone_from, zone_to, ts: (
-    #         zone_from, zone_to, ts,
-    #         m.DispatchGl[zone_from, zone_to, ts]
-    #         ))
-
     write_table(
         instance,
         instance.GZ_STORAGE_TYPE_TIMESERIES,
@@ -220,14 +217,12 @@ def post_solve(instance, outdir):
             "gas_zone",
             "period",
             "BuildLNGStorageCap",
-            # "LNG_storage_removed_cap",
             "LNG_storage_total_cap",
         ),
         values=lambda m, z, p: (
             z,
             p,
             m.BuildLNGStorageCap[z, p],
-            # m.LNG_storage_removed_cap[z, p],
             m.LNGStorageCapacity[z, p],
         ),
     )
@@ -239,14 +234,12 @@ def post_solve(instance, outdir):
             "gas_zone",
             "period",
             "BuildLNGLiquefactionCap",
-            # "LNG_liquefaction_removed_cap",
             "LNGLiqefactionCapacity",
         ),
         values=lambda m, z, p: (
             z,
             p,
             m.BuildLNGLiquefactionCap[z, p],
-            # m.LNG_liquefaction_removed_cap[z, p],
             m.LNGLiqefactionCapacity[z, p],
         ),
     )
@@ -258,14 +251,12 @@ def post_solve(instance, outdir):
             "gas_zone",
             "period",
             "BuildLNGVaporizationCap",
-            # "LNG_vaporization_removed_cap",
             "LNGVaporizationCapacity",
         ),
         values=lambda m, z, p: (
             z,
             p,
             m.BuildLNGVaporizationCap[z, p],
-            # m.LNG_vaporization_removed_cap[z, p],
             m.LNGVaporizationCapacity[z, p],
         ),
     )
@@ -296,20 +287,11 @@ def post_solve(instance, outdir):
             m.LNGStorageWithdrawalQuantity[z, ts],
         ),
     )
-    # write_table(
-    #     instance, instance.PERIODS,
-    #     output_file=os.path.join(outdir, "LNGFixedCosts.csv"),
-    #     headings=("period",
-    #               "LNGStorageFixedCosts"),
-    #     values=lambda m, p: (
-    #         p,
-    #         m.LNGStorageFixedCosts[p]
-    #         ))
     # print("Shadow price example:")
     # print(
     #     (instance.dual[instance.Balance[('WV', 20170322)]]
     #     /
     #     instance.ts_scale_to_period[20170322])
     #     /
-    #     (1+instance.discount_rate)**(instance.base_financial_year-instance.ts_period[20170322])
+    #     (1+instance.discount_rate)**(instance.base_financial_year-instance.ts_period[20230322])
     # )

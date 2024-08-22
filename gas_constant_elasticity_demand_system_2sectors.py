@@ -10,7 +10,7 @@ def calibrate(m, base_data, dr_elasticity_scenario=3):
     import numpy as np
 
     global base_load_dict, base_price_dict, elasticity_scenario
-    # build dictionaries (indexed lists) of base loads and prices
+    # build dictionaries (indexed lists) of base loads (quantities) and prices
     # store the load and price vectors as numpy arrays (vectors) for faste calculation later
     base_load_dict = {
         (z, ts, ds): np.array(base_loads, float)

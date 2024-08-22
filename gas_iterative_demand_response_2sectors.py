@@ -1,15 +1,17 @@
 """
 This module calibrates demand data and iterate over the calibration process with two demand sectors
 1. Electricity and Industrial (EI) sector: price is defined as marginal cost and variable across timeseries-gaszones
-2. Residential and Commercail (RC) sector: flat pricing that make sure to recover all the costs, 
-To assess the impact of additional pipeline capacity that is exogenously decided to be built
- (outside the optimal decisions made in the model):
-RC price is the average of total marginal cost and 'exogenous pipeline cost' over RC demand in the period
-The RC price will vary across gaszones but fixed across timeseries within each period, 
-reflecting the flat pricing model that LDCs often use for residential and commercial customers.
+2. Residential and Commercail (RC) sector: if select option flat pricing, RC price will vary across gaszones but 
+fixed across timeseries within each period, reflecting the flat pricing model 
+that LDCs often use for residential and commercial customers.
 
 Pricing aims to achieve revenue neutrality over the whole system (two sectors) in each period 
 (this would leave out the stranded costs of capacity built in the past periods)
+
+To assess the impact of additional pipeline capacity that is exogenously decided to be built
+ (outside the optimal decisions made in the model):
+RC price is the average of total marginal cost and 'exogenous pipeline cost' over RC demand in the period
+
 """
 
 from __future__ import print_function
@@ -94,7 +96,7 @@ def define_components(m):
 
     
     ###################
-    # RC price markup
+    # RC price markup: to reflect the distributional cost of serving the RC sector
     ##################
     m.rc_markup = Param(m.GAS_ZONES, within=NonNegativeReals, default=0.0)
 
@@ -229,13 +231,16 @@ def pre_iterate(m):
             (z, ts, ds): gas_marginal_cost(m, z, ts) + 
             ( m.rc_markup[z] if ds == 'RC' else 0.0) +
             (
-                # average of the exogenously-built pipeline capacity cost per each MMBtu of RC gas demand occured in the period
-                m.gl_cost_adder[m.ts_period[ts]] / total_gas_demand_adder if ds == 'RC' and total_gas_demand_adder != 0 else 0.0
+                # average of the exogenously-built pipeline capacity cost 
+                # per each MMBtu of RC gas demand occured in the period
+                m.gl_cost_adder[m.ts_period[ts]] / total_gas_demand_adder 
+                if ds == 'RC' and total_gas_demand_adder != 0 else 0.0
             )
             for z in m.GAS_ZONES
             for ts in m.TIMESERIES
             for ds in m.DEMAND_SECTORS
-            for total_gas_demand_adder in [sum((gas_demand(m, z, ts, ds) * m.ts_scale_to_year[ts]) for z in m.GAS_ZONE_COST_ADDER)]
+            for total_gas_demand_adder in [sum((gas_demand(m, z, ts, ds) * m.ts_scale_to_year[ts]) 
+                                               for z in m.GAS_ZONE_COST_ADDER)]
         }
  
         m.prev_demand = {
@@ -245,13 +250,6 @@ def pre_iterate(m):
             for ds in m.DEMAND_SECTORS
         }
         m.prev_SystemCost = value(m.SystemCost)
-
-        # print("=======================================================")
-        # print("Gas marginal costs and recoverable costs")
-        # print("Gas marginal cost: $ {c}".format(c=gas_marginal_cost(m, 'MD', 20250101)))
-        # print("recoverable cost, i.e. prev_recoverable_cost: {c}".format(c=m.prev_recoverable_cost['MD', 20250101, 'RC']))
-        # print("prev_demand: {d}".format(d=m.prev_demand['MD', 20250101, 'RC']))
-        # print("=======================================================")
 
     if m.iteration_number > 0:
 
@@ -541,10 +539,8 @@ def get_prices(m, revenue_neutral=True):
                     for z in m.GAS_ZONE_COST_ADDER 
                     for ts in m.TS_IN_PERIOD[p]
                 )
-                # Cost-adder is average of the exogenously-built pipeline capacity cost per each MMBtu of RC gas demand occured in the period p
-                ## TODO: double check whether need to include conversion from annual costs to base year 
-                # (maybe not since the total cost will be converted to base year later):
-                # * m.bring_annual_costs_to_base_year[p]
+                # Cost-adder is average of the exogenously-built pipeline capacity cost 
+                # per each MMBtu of RC gas demand occured in the period p
                 cost_adder[z, p] = (m.gl_cost_adder[p] / total_gas_demand_adder) if total_gas_demand_adder != 0 else 0.0
             else:
                 # No cost adder for those gas zones that are not served by the exogenously built pipeline
@@ -563,7 +559,7 @@ def get_prices(m, revenue_neutral=True):
         recoverable_cost = {
             (z, ts, ds): [gas_marginal_cost(m, z, ts) + 
                           (m.rc_markup[z] if ds == 'RC' else 0.0) +
-                          (cost_adder[z, m.ts_period[ts]] if ds == 'RC' else 0)]  # # one price per timeseries
+                          (cost_adder[z, m.ts_period[ts]] if ds == 'RC' else 0)] 
             for z in m.GAS_ZONES
             for ts in m.TIMESERIES
             for ds in m.DEMAND_SECTORS
@@ -588,7 +584,8 @@ def get_bids(m):
     for z in m.GAS_ZONES:
         for ts in m.TIMESERIES:
             for sector in m.DEMAND_SECTORS:
-                demand, wtp = demand_module.bid(m, z, ts, prices[z, ts][sector], sector) # demand is a list (array) of daily quantities by sector
+                # demand is a list (array) of daily quantities by sector
+                demand, wtp = demand_module.bid(m, z, ts, prices[z, ts][sector], sector) 
                 bids.append((z, ts, sector, prices[z, ts][sector], demand[0], wtp))
     return bids
 
@@ -691,13 +688,7 @@ def revenue_imbalance(flat_price_rc, m, gas_zone, period, recoverable_cost):
     # which is the total of recoverable cost across all zones and timeseries in the period
     dynamic_total_revenue = dynamic_revenue_rc + dynamic_revenue_ei 
 
-    imbalance = dynamic_total_revenue - total_revenue
-
-    # print(
-    #     "{}, {}: flat residential price ${} and variable industrial prices produce revenue imbalance of ${}/year".format(
-    #         gas_zone, ts, price_rc, imbalance
-    #     )
-    # )
+    imbalance = dynamic_total_revenue - total_revenue  
 
     return imbalance
 
@@ -782,11 +773,10 @@ def add_bids(m, bids):
 
 def reconstruct_gas_balance(m):
     """Reconstruct Energy_Balance constraint, preserving dual values (if present)."""
-    # copy the existing Energy_Balance object
+    # copy the existing Zone_Gas_Balance object
     old_Gas_Balance = dict(m.Zone_Gas_Balance)
     reconstruct(m.Zone_Gas_Balance)
-    # TODO: now that this happens just before a solve, there may be no need to
-    # preserve duals across the reconstruct().
+    
     if m.iteration_number > 0:
         for k in old_Gas_Balance:
             # change dual entries to match new Gas_Balance objects
@@ -818,7 +808,7 @@ def summary_headers(m):
 
 def summary_values(m):
     demand_components = [
-        c for c in ("gas_demand_total", "FlexibleDemandTotal") if hasattr(m, c) #consider separating RC and EI demand
+        c for c in ("gas_demand_total", "FlexibleDemandTotal") if hasattr(m, c) 
     ]
     values = []
 
@@ -835,7 +825,7 @@ def summary_values(m):
     # Direct costs (including "other") (excluding discounting and upscaling to the period)
     values.extend([(total_direct_costs_per_year(m, p) + m.gl_cost_adder[p]) for p in m.PERIODS])
 
-    # DR_Welfare_Cost
+    # Consumer welfare
     values.extend(
         [
             sum(
@@ -884,29 +874,17 @@ def get(component, idx, default):
     except KeyError:
         return default
 
-# def future_to_present_value(dr, t):
-#     """
-#     Returns a coefficient to convert money from some future value to
-#     t-years previously, with an annual discount rate of dr.
-#     Example:
-#     >>> round(future_to_present_value(.07,10),7)
-#     0.5083493
-#     """
-#     return (1 + dr) ** -t
 
 def write_results(m, include_iter_num=True):
     outputs_dir = m.options.outputs_dir
     tag = filename_tag(m, include_iter_num)
 
-    # avg_ts_scale = float(sum(m.ts_scale_to_year[ts] for ts in m.TIMESERIES)) / len(
-    #     m.TIMESERIES
-    # )
+    # Get the last bid
     last_bid = m.DR_BID_LIST.last()
 
     # Store value of cost_adder for each gas zone and period
     cost_adder= {
         (z, p): value(
-            #if want to get real-dollar value: (m.gl_cost_adder[p] * m.bring_annual_costs_to_base_year[p])
             (m.gl_cost_adder[p]) / total_dr_bid_adder 
             if z in m.GAS_ZONE_COST_ADDER and total_dr_bid_adder != 0 else 0.0
         )
@@ -938,12 +916,6 @@ def write_results(m, include_iter_num=True):
         for z in m.GAS_ZONES
         for ts in m.TIMESERIES
     }
-    # for z in m.GAS_ZONES:
-    #     for t in m.TIMESERIES:
-    #         print("Debugging: verify the types and values of final prices and quantities")
-    #         print(final_prices[z, t])
-    #         print(type(final_prices[z, t]['RC'])) 
-    #         print(type(final_quantities[z, t]['RC'])) 
 
     util.write_table(
         m,
@@ -966,52 +938,14 @@ def write_results(m, include_iter_num=True):
         + tuple(getattr(m, component)[z, t] for component in m.Zone_Gas_Withdrawals)
         + tuple(m.dr_price[last_bid, z, t, ds] for ds in m.DEMAND_SECTORS)
         + tuple(m.dr_bid[last_bid, z, t, ds] for ds in m.DEMAND_SECTORS)
-        +(gas_marginal_cost(m, z, t), #should also record the fixed cost adder and average fixed cost by period
+        +(gas_marginal_cost(m, z, t), 
           cost_adder[z, m.ts_period[t]],)
         + tuple(final_prices[z, t][ds] for ds in m.DEMAND_SECTORS)
         + tuple(final_quantities[z, t][ds] for ds in m.DEMAND_SECTORS)
-        # + ("peak" if m.ts_scale_to_year[t] < 0.5 * avg_ts_scale else "typical")
         + tuple(m.base_data_dict[z, t, ds][0] for ds in m.DEMAND_SECTORS)
         + tuple(m.base_data_dict[z, t, ds][1] for ds in m.DEMAND_SECTORS),
     )
-    # util.write_table(
-    #     m,
-    #     m.GAS_ZONES,
-    #     m.TIMESERIES,
-    #     output_file=os.path.join(outputs_dir, f"gas_sources{tag}.csv"),
-    #     headings=("gas_zone", "period", "timeseries")
-    #     + tuple(m.Zone_Gas_Injections)
-    #     + tuple(m.Zone_Gas_Withdrawals)
-    #     + ("offered price (RC)", "bid q (RC)", "offered price (EI)", "bid q (EI)", 
-    #        "final mc", "cost_adder", 
-    #        "final price (RC)", "final q (RC)", "final price (EI)", "final q (EI)")
-    #     + (
-    #         # "peak_day", 
-    #         "base_load (RC)", "base_price (RC)", "base_load (EI)", "base_price (EI)"),
-    #     values=lambda m, z, t: (z, m.ts_period[t], t)
-    #     + tuple(getattr(m, component)[z, t] for component in m.Zone_Gas_Injections)
-    #     + tuple(getattr(m, component)[z, t] for component in m.Zone_Gas_Withdrawals)
-    #     + (
-    #         m.dr_price[last_bid, z, t, 'RC'],
-    #         m.dr_bid[last_bid, z, t, 'RC'],
-    #         m.dr_price[last_bid, z, t, 'EI'],
-    #         m.dr_bid[last_bid, z, t, 'EI'],
-    #         gas_marginal_cost(m, z, t), #should also record the fixed cost adder and average fixed cost by period
-    #         cost_adder_real[z, m.ts_period[t]],
-    #         final_prices[z, t]['RC'], #extract the scalar value from the list
-    #         final_quantities[z, t]['RC'],
-    #         final_prices[z, t]['EI'], #extract the scalar value from the list
-    #         final_quantities[z, t]['EI'],
-    #     )
-    #     + (
-    #         # "peak" if m.ts_scale_to_year[t] < 0.5 * avg_ts_scale else "typical",
-    #         m.base_data_dict[z, t, 'RC'][0],
-    #         m.base_data_dict[z, t, 'RC'][1],
-    #         m.base_data_dict[z, t, 'EI'][0],
-    #         m.base_data_dict[z, t, 'EI'][1],
-    #     ),
-    # )
-
+    
 def write_dual_costs(m, include_iter_num=True):
     outputs_dir = m.options.outputs_dir
     tag = filename_tag(m, include_iter_num)
@@ -1111,7 +1045,6 @@ def load_inputs(m, gas_switch_data, inputs_dir):
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, 'RC_price_markup.csv'),
         select=('GAS_ZONES','RC_price_markup',),
-        index=m.GAS_ZONES,
         param=(
         m.rc_markup,
         )

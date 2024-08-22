@@ -5,12 +5,6 @@ from switch_model.financials import capital_recovery_factor as crf
 from switch_model.reporting import write_table
 from switch_model.utilities import unique_list
 
-# import collections
-
-# # turn off financial reporting, which currently expects to find LOAD_ZONES
-# import switch_model.financials
-# del switch_model.financials.post_solve
-
 dependencies = "switch_model.timescales", "switch_model.financials"
 
 
@@ -42,13 +36,10 @@ def define_components(m):
         filter=lambda m, z, p: m.LNG_new_build_allowed[z],
     )
 
-    # m.BLD_YRS_FOR_REMOVED_LNG_STORAGE = Set(dimen=2)
-
     m.BLD_YRS_FOR_LNG_STORAGE = Set(
         dimen=2,
         ordered=True,
         initialize=lambda m: m.BLD_YRS_FOR_EXISTING_LNG_STORAGE
-        # | m.BLD_YRS_FOR_REMOVED_LNG_STORAGE
         | m.NEW_LNG_STORAGE_BLD_YRS,
     )
 
@@ -107,12 +98,10 @@ def define_components(m):
         filter=lambda m, z, p: m.LNG_new_build_allowed[z],
     )
 
-    # m.BLD_YRS_FOR_REMOVED_LNG_LIQUEFACTION = Set(dimen=2)
     m.BLD_YRS_FOR_LNG_LIQUEFACTION = Set(
         dimen=2,
         ordered=True,
         initialize=lambda m: m.BLD_YRS_FOR_EXISTING_LNG_LIQUEFACTION
-        # | m.BLD_YRS_FOR_REMOVED_LNG_LIQUEFACTION
         | m.NEW_LNG_LIQUEFACTION_BLD_YRS,
     )
 
@@ -162,13 +151,10 @@ def define_components(m):
         filter=lambda m, z, p: m.LNG_new_build_allowed[z],
     )
 
-    # m.BLD_YRS_FOR_REMOVED_LNG_VAPORIZATION = Set(dimen=2)
-
     m.BLD_YRS_FOR_LNG_VAPORIZATION = Set(
         dimen=2,
         ordered=True,
         initialize=lambda m: m.BLD_YRS_FOR_EXISTING_LNG_VAPORIZATION
-        # | m.BLD_YRS_FOR_REMOVED_LNG_VAPORIZATION
         | m.NEW_LNG_VAPORIZATION_BLD_YRS,
     )
 
@@ -247,13 +233,9 @@ def define_components(m):
     m.LNG_ROUTE_TIMESERIES = Set(
         dimen=3, initialize=lambda m: m.DIRECTIONAL_ROUTE * m.TIMESERIES
     )
-    # m.LNG_ROUTE_TIMESERIES_ALLOWED = Set(
-    #     dimen=3,
-    #     initialize=m.DIRECTIONAL_ROUTE * m.TIMESERIES,
-    #     filter=lambda m, z, p: m.LNG_flow_allowed[m.LNG_d_route[r]])
 
     m.LNGShipped = Var(
-        m.LNG_ROUTE_TIMESERIES,  # m.LNG_ROUTE_TIMESERIES_ALLOWED
+        m.LNG_ROUTE_TIMESERIES, 
         within=NonNegativeReals,
     )
 
@@ -270,7 +252,8 @@ def define_components(m):
     )
 
     # 5. LNG quantity at each gas zone
-    # 5.1 LNG additions to storage includes: international imports, receive from (- ship to) other states, liquefy from NG
+    # 5.1 LNG additions to storage includes: 
+    # international imports, receive from (- ship to) other states, liquefy from NG
 
     m.LNG_import_ref_quantity = Param(
         m.GAS_ZONES_TIMESERIES, within=NonNegativeReals, default=0
@@ -317,11 +300,6 @@ def define_components(m):
         m.GAS_ZONES_TIMESERIES,
         rule=lambda m, z, ts: m.SumLNGShipped[z, ts] + m.LNGRegasifiedToNG[z, ts],
     )
-
-    # m.LNGStorageNetWithdrawal = Expression(
-    #     m.GAS_ZONES_TIMESERIES,
-    #     rule = lambda m, z, ts:
-    #         m.LNGStorageWithdrawalQuantity[z, ts] - m.LNGStorageAdditionQuantity[z, ts])
 
     # For LNG, no constraint max number of storage cycles
     m.LNG_storage_max_cycles_per_year = Param(
@@ -446,7 +424,7 @@ def define_components(m):
     # m.LNG_store_to_release_ratio = Param(
     #     m.GAS_ZONES,
     #     within=PercentFraction,
-    #     default=0.975) #0.885
+    #     default=0.885) 
 
     ## NG amount obtained from regasifying LNG
     m.GasQuantityFromLNG = Expression(
@@ -539,41 +517,6 @@ def load_inputs(m, gas_switch_data, inputs_dir):
         param=(m.LNG_vaporization_predet_cap,
                m.LNG_vaporization_removed_cap),
     )
-
-    # # LNG storage removed
-    # gas_switch_data.load_aug(
-    #     filename=os.path.join(inputs_dir, "LNG_storage_removed.csv"),
-    #     # auto_select=True,
-    #     select=(
-    #         "GAS_ZONES",
-    #         "LNG_storage_predet_build_year",
-    #         "LNG_storage_removed_cap",
-    #     ),
-    #     index=m.BLD_YRS_FOR_REMOVED_LNG_STORAGE,
-    #     param=(m.LNG_storage_removed_cap),
-    # )
-    # # LNG Liquefaction removed
-    # gas_switch_data.load_aug(
-    #     filename=os.path.join(inputs_dir, "LNG_liquefaction_removed.csv"),
-    #     select=(
-    #         "GAS_ZONES",
-    #         "LNG_liquefaction_predet_build_year",
-    #         "LNG_liquefaction_removed_cap",
-    #     ),
-    #     index=m.BLD_YRS_FOR_REMOVED_LNG_LIQUEFACTION,
-    #     param=(m.LNG_liquefaction_removed_cap),
-    # )
-    # # LNG Regasification removed
-    # gas_switch_data.load_aug(
-    #     filename=os.path.join(inputs_dir, "LNG_vaporization_removed.csv"),
-    #     select=(
-    #         "GAS_ZONES",
-    #         "LNG_vaporization_predet_build_year",
-    #         "LNG_vaporization_removed_cap",
-    #     ),
-    #     index=m.BLD_YRS_FOR_REMOVED_LNG_VAPORIZATION,
-    #     param=(m.LNG_vaporization_removed_cap),
-    # )
 
     # LNG imports
     gas_switch_data.load_aug(

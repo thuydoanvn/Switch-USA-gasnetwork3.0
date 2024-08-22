@@ -1,6 +1,3 @@
-# switch solve --solver cplexamp --verbose --stream-solver
-### Remove constraint on production by using RelaxBalanceUp and RelaxBalanceDown at the supply price
-
 import os
 from pyomo.environ import *
 from switch_model.reporting import write_table
@@ -23,7 +20,8 @@ def define_components(m):
         initialize=lambda m: m.DIRECTIONAL_GL * m.TIMESERIES
     )
     m.DispatchGl = Var(m.GAS_LINES_TIMESERIES, within=NonNegativeReals)
-    ## Constraints: Flow on each gas line-direction must be less than installed capacity on that corridor as of that timeseries
+    ## Constraints: 
+    # Flow on each gas line-direction must be less than installed capacity on that corridor as of that timeseries
     m.Maximum_DispatchGl = Constraint(
         m.GAS_LINES_TIMESERIES,
         rule=lambda m, zone_from, zone_to, ts: (
@@ -34,9 +32,10 @@ def define_components(m):
         m.GAS_LINES_TIMESERIES,
         rule=lambda m, zone_from, zone_to, ts: (
             m.DispatchGl[zone_from, zone_to, ts]))
-    ### Gas line fuel cost = 3.04% of total consumption (US average, 2015-2019, EIA data). Temporarily use the same number for all states.
+    ### Gas line fuel cost = 3.04% of total consumption (US average, 2015-2019, EIA data).
+    #  Temporarily use the same number for all states.
     # ==>  m.gl_efficiency: default = 1 - 0.03 = 0.97 --> GlGasReceived = 0.97*GlGasSent
-    # Gas line fuel is accounted in gas line fuel expense and the gas_fuel_demand_ref_quantity. Here set gl_efficiency = 1
+    # Gas line fuel is accounted in gas line fuel expense already. Here set gl_efficiency = 1
     m.gl_efficiency = Param(
         m.GAS_LINES,
         within=PercentFraction,
@@ -87,16 +86,11 @@ def define_components(m):
 
     ### Register net injections with zonal gas balance
     m.Zone_Gas_Injections.append('GasStorageNetWithdrawalSum')
-    ### the quantity of gas in storage in each gas zone at the end of each timeseries
-    # use # hours of capacity when specified
 
     ## Constraints - Storage
-    ### quantity of gas in storage in each gas zone at the end of each timeseries
+    ### the amount of gas in storage at the end of each timeseries
     ### must equal the level at the end of the prior timeseries (wrapping from start of year to end)
-    ### Some documents: storage fuel cost = 4% gross of injection and withdrawal gas.
-    ### (m.GasStorageInjectionQuantity[z, ts] + m.GasStorageWithdrawalQuantity[z, ts]) * (1 - m.gas_store_to_release_ratio[z])
-    ### But that seems to be too much
-    ### Check with: storage fuel cost = 4% injection gas
+    ### assume storage fuel cost = 4% gross of injection gas
 
     ### track state of storage: previous quantity + injections - withdrawals - gas fuel loss
     def Track_State_Of_Storage_rule(m, z, ty, ts):
@@ -108,9 +102,9 @@ def define_components(m):
     m.Track_State_Of_Storage = Constraint(
         m.GZ_STORAGE_TYPE_TIMESERIES,
         rule=Track_State_Of_Storage_rule)
+    
     ### quantity of gas in storage in each gas zone must never be below zero or
     ### above the amount of non-retired storage capacity existing during that timeseries
-
     def State_Of_Storage_Upper_Limit_rule(m, z, ty, ts):
         return m.GasStorageQuantity[z, ty, ts] <= \
             m.GasStorageCapacity[z, ty, m.ts_period[ts]]
@@ -145,16 +139,16 @@ def define_components(m):
     
     #4 GAS DEMAND
     ## Define demand sectors
-    # m.DEMAND_SECTORS = Set(
-    #     dimen=1
-    # )
     m.DEMAND_SECTORS = Set(dimen=1, initialize=['EI', 'RC'])
+    
     ## use demand price to compute cost of fuel loss
     ## for simplicity, assume the cost of natural gas loss during transmission, storage, and LNG processing is the same as the cost of gas in the RC sector.
     m.gas_ref_price = Param(
         m.GAS_ZONES, m.TIMESERIES, m.DEMAND_SECTORS,
         within=NonNegativeReals,
-        default=6.96 # Max city gate price among contiguous US states in 2019: 7.22*1000/(NG_btu_per_cf); or use Residential price at national US in 2019 (10.51*1000/(NG_btu_per_cf) = 10.1). [or 5.17 = weighted average of gas price in US in 2019]
+        # Max city gate price among contiguous US states in 2019: 7.22*1000/(NG_btu_per_cf);
+        # [or 5.17 = weighted average of gas price in US in 2019]
+        default=6.96 
     )
     
     m.gas_unit_cost = Param(
@@ -190,15 +184,18 @@ def define_components(m):
 
     # #5 OPERATIONAL COST
     # # 5.1 GAS PRODUCTION COST
-    ## The amount of gas produced in each gas zone during each period depends on number of wells available and production_year.
-    ### in gas_well_build.py
+    ## The amount of gas produced in each gas zone during each period depends on
+    # number of wells available and production_year.
+    ### Determined in gas_well_build.py
     m.Zone_Gas_Injections.append("GasSupplyQuantity")
     
     # Summarize gas production costs in each timepoint for the objective function
     m.gas_well_operating_cost_perMMbtud = Param(
         m.GAS_ZONES_TIMESERIES,
         within=NonNegativeReals,
-        default= 0.1 #$0.8/MMcfd ~ $0.0008/MMbtud in 2013 for operation cost only, not yet count labor cost etc. https://rbnenergy.com/shale-production-economics-part-4-variable-cost-and-net-present-value
+        #$0.8/MMcfd ~ $0.0008/MMbtud in 2013 for operation cost only, not yet count labor cost etc.
+        # https://rbnenergy.com/shale-production-economics-part-4-variable-cost-and-net-present-value
+        default= 0.1 
     )
     m.gas_well_operating_cost = Param(
         m.GAS_ZONES_TIMESERIES,
@@ -206,16 +203,13 @@ def define_components(m):
         initialize=lambda m, z, ts: (
         # cost per timeseries equals cost per day / number of timeseries per day
         m.gas_well_operating_cost_perMMbtud[z,ts] / 
-        (24/m.ts_duration_hrs[ts]) # m.ts_duration_hrs[tp]= 24
+        (24/m.ts_duration_hrs[ts]) 
         )
     )
     m.GasProdCostsPerTP = Expression(
         m.TIMEPOINTS,
         rule=lambda m, tp:
         sum(
-            # The m.tp_ts and m.tp_duration_hrs parameters are defined in switch_model.timescales:
-            # m.tp_ts[tp] identifies the timeseries that contains timepoint tp)
-            # total production cost per timpoint equals (gas supply quantity * cost per timeseries /  number of timepoints in that timeseries)
             m.GasSupplyQuantity[z,ts] * m.gas_well_operating_cost[z,ts] / m.ts_num_tps[ts]
             for (z,ts) in m.GAS_ZONES_TIMESERIES
             if ts==m.tp_ts[tp]
@@ -225,9 +219,10 @@ def define_components(m):
 
     # 5.2 TRANSMISSION FUEL COST: the volume of gas pipeline uses was also included as m.gl_efficiency
     m.gas_transmission_fuel_cost = Param(
-        m.GAS_ZONES_TIMESERIES,
         within=NonNegativeReals,
-        default=0.03 # pipeline and distribution uses is 1.5% of total U.S. inter-state movement volume (US average, 2019, EIA data). Temporarily use the same number for all states.
+        # pipeline and distribution uses is 1.5% of total U.S. inter-state movement volume (US average, 2019, EIA data). 
+        # For simplicity, use the same number for all states.
+        default=0.03 
     )
     def DispatchGl_calculation(m, z, ts):
         return (
@@ -241,7 +236,7 @@ def define_components(m):
         m.TIMEPOINTS,
         rule=lambda m, tp:
         sum(
-            m.gas_transmission_fuel_cost[z,ts] * m.SumDispatchGl[z,ts] * m.gas_unit_cost[z,ts]* m.tp_duration_hrs[tp]/ 24
+            m.gas_transmission_fuel_cost * m.SumDispatchGl[z,ts] * m.gas_unit_cost[z,ts]* m.tp_duration_hrs[tp]/ 24
             for (z,ts) in m.GAS_ZONES_TIMESERIES
             if ts==m.tp_ts[tp]
             )
@@ -252,14 +247,14 @@ def define_components(m):
     m.gas_storage_fuel_cost = Param(
         m.GAS_STORAGE_TYPES,
         within=NonNegativeReals,
-        default=0.02 # 4% of gross storage injections and withdrawals
+        # 2% of gross storage injections and withdrawals
+        default=0.02 
     )
     m.StorageFuelCostTS = Expression(
         m.GAS_ZONES_TIMESERIES,
         rule=lambda m, z, ts:
         sum(
             m.gas_storage_fuel_cost[ty] * (
-            # m.GasStorageQuantity[z, ty, ts]
             m.GasStorageInjectionQuantity[z, ty, ts] +
             m.GasStorageWithdrawalQuantity[z, ty, ts]
             )

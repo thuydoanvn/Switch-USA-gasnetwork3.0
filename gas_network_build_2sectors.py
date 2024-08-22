@@ -1,13 +1,11 @@
-# Define additional capacity of pipeline and storage to be built
+# Define additional capacity of pipeline and underground storage to be built
 import os
 from pyomo.environ import *
 from pyomo.util.infeasible import *
 from switch_model.financials import capital_recovery_factor as crf
 from switch_model.reporting import write_table
 
-# import collections
-
-# turn off financial reporting, which currently expects to find LOAD_ZONES
+# turn off SWITCH financial reporting, which currently expects to find LOAD_ZONES
 import switch_model.financials
 
 del switch_model.financials.post_solve
@@ -22,9 +20,10 @@ def define_components(m):
         dimen=2, ordered=True, 
         initialize=lambda m: m.GAS_ZONES * m.TIMESERIES
     )
-    m.GAS_LINES = Set(dimen=1, ordered=True)
+    
     #### GAS LINES
     # input parameters defining gas lines
+    m.GAS_LINES = Set(dimen=1, ordered=True)
     m.gas_line_gz1 = Param(m.GAS_LINES, within=m.GAS_ZONES)
     m.gas_line_gz2 = Param(m.GAS_LINES, within=m.GAS_ZONES)
     m.gas_line_length = Param(m.GAS_LINES, within=NonNegativeReals)
@@ -34,14 +33,12 @@ def define_components(m):
     m.gas_line_predet_cap_general = Param(
         m.BLD_YRS_FOR_EXISTING_GL, within=NonNegativeReals, default=0
     )
-
     m.gas_line_new_build_allowed = Param(m.GAS_LINES, within=Boolean, default=True)
     m.NEW_GAS_LINE_BLD_YRS = Set(
         dimen=2,
         initialize=m.GAS_LINES * m.PERIODS,
         filter=lambda m, gl, p: m.gas_line_new_build_allowed[gl],
     )
-
     m.BLD_YRS_FOR_REMOVED_GL = Set(dimen=2)
     m.BLD_YRS_FOR_GAS_LINE = Set(
         dimen=2,
@@ -49,9 +46,6 @@ def define_components(m):
         | m.BLD_YRS_FOR_REMOVED_GL
         | m.NEW_GAS_LINE_BLD_YRS,
     )
-    # m.BLD_YRS_FOR_REMOVED_GAS_LINE = Set(
-    #     dimen=2,
-    #     initialize=lambda m: m.BLD_YRS_FOR_REMOVED_GL | m.NEW_GAS_LINE_BLD_YRS)
     m.gas_line_removed_cap_general = Param(
         m.BLD_YRS_FOR_GAS_LINE, within=NonNegativeReals, default=0
     )
@@ -92,17 +86,22 @@ def define_components(m):
     m.gas_d_line = Param(
         m.DIRECTIONAL_GL, within=m.GAS_LINES, initialize=init_gas_d_line
     )
-    ## Gas_line capital cost (example: OVERALL cost = $1.75/mmbtu/km new build twoways- $0.75/mmbtu/km reversal = $1/mmbtu/km)
+    ## Gas_line capital cost 
+    # (example: OVERALL cost = $1.75/mmbtu/km new build twoways- $0.75/mmbtu/km reversal = $1/mmbtu/km)
     m.general_gas_line_capital_cost = Param(
-        m.GAS_LINES, within=NonNegativeReals
-    )  # ,default=1.76
+        m.GAS_LINES, within=NonNegativeReals,
+        default=1.76
+    )  
     ## Gas_line investment cost for each flow direction ($0.75/mmbtu reversal)
     m.directional_gas_line_capital_cost = Param(
-        m.GAS_LINES, within=NonNegativeReals
-    )  # ,default=1.17
+        m.GAS_LINES, within=NonNegativeReals,
+        default=1.17
+    )  
     m.gas_line_life = Param(within=NonNegativeReals, default=50)
-    ### My find other good source for Fixed Operation and Maintenance Cost. Should be $/MMbtu/year
-    #  for now using 2.6% of total capital cost https://transitionaccelerator.ca/wp-content/uploads/2023/06/The-Techno-Economics-of-Hydrogen-Pipelines-v2.pdf
+
+    # Fixed Operation and Maintenance Cost:
+    # for now using 2.6% of total capital cost 
+    # source: https://transitionaccelerator.ca/wp-content/uploads/2023/06/The-Techno-Economics-of-Hydrogen-Pipelines-v2.pdf
     m.gas_line_fixed_om_fraction = Param(within=NonNegativeReals, default=0.026)
 
     ## m.BuildGl: how much gas line GENERAL capacity (MMBtu) installed on a corridor in a given build year.
@@ -140,10 +139,6 @@ def define_components(m):
         | m.BLD_YRS_FOR_REMOVED_D_GL
         | m.NEW_GAS_D_LINE_BLD_YRS,
     )
-    # m.BLD_YRS_FOR_REMOVED_GAS_D_LINE = Set(
-    #     dimen=3,
-    #     initialize=lambda m: m.BLD_YRS_FOR_REMOVED_D_GL | m.NEW_GAS_D_LINE_BLD_YRS)
-
     m.gas_line_removed_cap_directional = Param(
         m.BLD_YRS_FOR_GAS_D_LINE, within=NonNegativeReals, default=0
     )
@@ -164,12 +159,13 @@ def define_components(m):
     )
 
     ##################
-    # Exogenously estimate/collect data on exogenously predetermined pipeline built
-    # and assign that gas line cost as a cost adder for the residential sector
-    ##################
-    ## Exogenously decisions to build a gas line in a given period
-    ## Mountain Valley Pipeline: 2.0 billion cubic feet per day (Bcf/d) of natural gas
+    # Exogenously decisions to build a gas line in a given period
+    # Collect data and capacity for exogenously added pipeline
+    # and assign that gas line average cost per MMBtu of gas as 
+    # a cost adder on top of marginal cost for the residential sector  
+    ## Eg. Mountain Valley Pipeline: 2.0 billion cubic feet per day (Bcf/d) of natural gas
     ## equivalently 2.0*10^9*1.037 = 2.074*10^9 MMBtu/day
+    ##################
     m.GAS_ZONE_COST_ADDER = Set(dimen=1, 
                                 ordered=True)
     
@@ -194,10 +190,7 @@ def define_components(m):
         within=Integers,
         default=50,
     )
-
     # Sum up the annual cost of exogenously built gas lines in a given period
-    # Mountain Valley Pipeline final cost revised up to $7.85 billion, 
-    # presumbaly will be in operation for its whole lifespan (50 years)
     m.gl_cost_adder = Param(
         m.PERIODS,
         initialize=lambda m, p: sum(
@@ -241,10 +234,7 @@ def define_components(m):
     )
 
     ### Summarize annual costs for the objective function.
-    ### Units should be total annual future costs in $base_year
-    ### real dollars. The objective function will convert these to
-    ### base_year Net Present Value in $base_year real dollars.
-    # ### Total annual fixed costs of gas lines
+    ### Total annual fixed costs of gas lines
     ### Don't add OM cost on general gas line (on directional gas lines only)
     m.GeneralGlFixedCosts = Expression(
         m.PERIODS,
@@ -257,14 +247,6 @@ def define_components(m):
             if bld_yr == p
         ),
     )
-    # Directional gas line fixed cost
-    # m.directional_gas_line_cost_annual = Param(
-    #     m.DIRECTIONAL_GL,
-    #     within=NonNegativeReals,
-    #     initialize=lambda m, zone_from, zone_to: (
-    #         m.directional_gas_line_capital_cost[m.gas_d_line[zone_from, zone_to]] *
-    #         (crf(m.interest_rate, m.gas_line_life) +
-    #             m.gas_line_fixed_om_fraction)))
 
     m.DirectionalGlFixedCosts = Expression(
         m.PERIODS,
@@ -284,12 +266,6 @@ def define_components(m):
     m.Cost_Components_Per_Period.append("GeneralGlFixedCosts")
     m.Cost_Components_Per_Period.append("DirectionalGlFixedCosts")
 
-    # m.GlFixedCosts = Expression(
-    #     m.PERIODS,
-    #     rule=lambda m, p: m.GeneralGlFixedCosts[p] + m.DirectionalGlFixedCosts[p]
-    # )
-    # m.Cost_Components_Per_Period.append('GlFixedCosts')
-
     #### GAS STORAGE
     m.GAS_STORAGE_TYPES = Set(dimen=1)
     m.GZ_STORAGE_TYPES = Set(
@@ -299,7 +275,8 @@ def define_components(m):
     m.gas_storage_predet_cap = Param(
         m.BLD_YRS_FOR_EXISTING_GAS_STORAGE_TYPE, within=NonNegativeReals, default=0
     )
-    # for states that have no underground storage during 2002-2019, presume that the ecology characteristics do not allow to build underground storage there.
+    # for states that have no underground storage during 2002-2019,
+    #  presume that the ecology characteristics do not allow to build underground storage there.
     m.gas_storage_new_build_allowed = Param(m.GZ_STORAGE_TYPES, within=Boolean)
     m.NEW_GAS_STORAGE_TYPE_BLD_YRS = Set(
         dimen=3,
@@ -311,14 +288,8 @@ def define_components(m):
         dimen=3,
         ordered=True,
         initialize=lambda m: m.BLD_YRS_FOR_EXISTING_GAS_STORAGE_TYPE
-        # | m.BLD_YRS_FOR_REMOVED_GAS_STORAGE_TYPE
         | m.NEW_GAS_STORAGE_TYPE_BLD_YRS,
     )
-
-    # m.BLD_YRS_FOR_ALL_REMOVED_GAS_STORAGE_TYPE = Set(
-    #     dimen=3,
-    #     ordered=True,
-    #     initialize=lambda m: m.BLD_YRS_FOR_REMOVED_GAS_STORAGE_TYPE | m.NEW_GAS_STORAGE_TYPE_BLD_YRS)
     m.gas_storage_removed_cap = Param(
         m.BLD_YRS_FOR_GAS_STORAGE_TYPE, within=NonNegativeReals, default=0
     )
@@ -326,17 +297,18 @@ def define_components(m):
     m.gas_storage_capital_cost = Param(
         m.GZ_STORAGE_TYPES, within=NonNegativeReals, default=39.76
     )
-    # working capacity/total capacity or just set this to 1 and use working capacity as storage capacity for simplicity?
+    # working capacity/total capacity: set this to 1 and use working capacity as storage capacity for simplicity
     m.gas_storage_efficiency = Param(
         m.GZ_STORAGE_TYPES, within=PercentFraction, default=1.0
     )
+    #  Should be 0.96, but storage fuel loss ratio account for it (0.04).
     m.gas_store_to_release_ratio = Param(
         m.GZ_STORAGE_TYPES, within=PercentFraction, default=1
-    )  # should be 0.96, but since the model here include balancing term which already accounted for this storage fuel loss.
-    # If don't constraint max number of cycel then set: default=float('inf')
+    )  
+    # If don't constraint max number of cycle then set: 
     m.gas_storage_life = Param(m.GAS_STORAGE_TYPES, within=NonNegativeReals, default=50)
     m.gas_storage_max_cycles_per_year = Param(
-        m.GAS_STORAGE_TYPES, within=NonNegativeReals
+        m.GAS_STORAGE_TYPES, within=NonNegativeReals, default=float('inf')
     )
     # Valid locations and times for gas infrastructure
     m.GZ_STORAGE_TYPE_PERIODS = Set(
@@ -376,14 +348,6 @@ def define_components(m):
     # Calculate fixed costs for all storage capacity come to service in period p
     m.gas_storage_fixed_om_fraction = Param(within=NonNegativeReals, default=0)
 
-    # m.gas_storage_type_cost_annual = Param(
-    #     m.GZ_STORAGE_TYPES,
-    #     within=NonNegativeReals,
-    #     initialize=lambda m, z, ty: (
-    #         m.gas_storage_capital_cost[z, ty]*
-    #         (crf(m.interest_rate, m.gas_storage_life[ty]) +
-    #             m.gas_storage_fixed_om_fraction)))
-
     m.GAS_STORAGE_TYPE_BUILDS = Set(
         dimen=2,
         initialize=m.GZ_STORAGE_TYPES,
@@ -404,12 +368,6 @@ def define_components(m):
 
 
 def load_inputs(m, gas_switch_data, inputs_dir):
-    # INPUTS FOR NETWORK BUILD
-    # gas_switch_data.load_aug(
-    #     filename=os.path.join(inputs_dir, "gas_zones.csv"),
-    #     index=m.GAS_ZONES,
-    #     param=tuple(),
-    # )
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, 'gas_zones.csv'),
         select=('GAS_ZONES','gas_well_new_build_allowed',),
@@ -420,7 +378,6 @@ def load_inputs(m, gas_switch_data, inputs_dir):
     )
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, "gas_lines_capital_cost.csv"),
-        # auto_select=True,
         select=(
             "GAS_LINES",
             "gas_line_gz1",
@@ -441,8 +398,16 @@ def load_inputs(m, gas_switch_data, inputs_dir):
         ),
     )
     gas_switch_data.load_aug(
+        filename=os.path.join(inputs_dir, 'gas_line_parameters.csv'),
+        select=("gas_line_life","gas_transmission_fuel_cost", "gas_line_fixed_om_fraction"),
+        param=(
+            m.gas_line_life,
+            m.gas_transmission_fuel_cost,
+            m.gas_line_fixed_om_fraction
+        )
+    )
+    gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, "gas_lines_predetermined_general.csv"),
-        # auto_select=True,
         select=(
             "GAS_LINES",
             "gas_line_predet_build_year",
@@ -454,7 +419,6 @@ def load_inputs(m, gas_switch_data, inputs_dir):
     )
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, "gas_lines_predetermined_directional.csv"),
-        # auto_select=True,
         select=(
             "gas_line_gz1",
             "gas_line_gz2",
@@ -467,7 +431,6 @@ def load_inputs(m, gas_switch_data, inputs_dir):
     )
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, "gas_storage_predetermined.csv"),
-        # auto_select=True,
         select=(
             "GAS_ZONES",
             "gas_storage_type",
@@ -516,7 +479,6 @@ def load_inputs(m, gas_switch_data, inputs_dir):
     ## INPUTS FOR NETWORK FLOW AND BALANCE
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, "gas_demand.csv"),
-        # auto_select=True,
         select=(
             "GAS_ZONES",
             "TIMESERIES",
@@ -526,15 +488,7 @@ def load_inputs(m, gas_switch_data, inputs_dir):
         ),
         param=(m.gas_ref_price, m.gas_demand_ref_quantity),
     )
-    # gas_switch_data.load_aug(
-    #     filename=os.path.join(inputs_dir, 'gas_supply.csv'),
-    #     # auto_select=True,
-    #     select=('GAS_ZONES','TIMESERIES','gas_supply_ref_price','gas_supply_ref_quantity'),
-    #     param=(
-    #         m.gas_supply_ref_price, m.gas_supply_ref_quantity
-    #     )
-    # )
-
+    
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, "gas_trade.csv"),
         # auto_select=True,
@@ -547,22 +501,12 @@ def load_inputs(m, gas_switch_data, inputs_dir):
         param=(m.gas_import_ref_quantity, m.gas_export_ref_quantity),
     )
 
-    # gas_switch_data.load_aug(
-    #     filename=os.path.join(inputs_dir, 'gas_fuel_cons.csv'),
-    #     # auto_select=True,
-    #     select=('GAS_ZONES','PERIOD','gas_fuel_demand_ref_quantity'),
-    #     param=(
-    #         m.gas_fuel_demand_ref_quantity
-    #     )
-    # )
-    
-    
     # INPUTS FOR CASE STUDY IF NEEDED
     # Exogenous decisions to build new gas lines in a given period
-    # # The capacity of the exogenous gas line build will be integrated into the pipeline network 
-    # # for gas flow and balance.
-    # # However, the capital cost to build those gas lines will be paid by the RC sector 
-    # # in gas zones that are listed in the m.GAS_ZONE_COST_ADDER.
+    ## The capacity of the exogenous gas line build will be integrated into the pipeline network 
+    ## for gas flow and balance.
+    ## However, the capital cost to build those gas lines will be paid by the RC sector 
+    ## in gas zones that are listed in the m.GAS_ZONE_COST_ADDER.
     general_build_file = os.path.join(inputs_dir, "gas_lines_general_build_exogenous.csv")
     if os.path.exists(general_build_file):
         gas_switch_data.load_aug(
