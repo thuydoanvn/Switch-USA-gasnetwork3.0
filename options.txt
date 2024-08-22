@@ -1,0 +1,12 @@
+--max-iter 5000
+--retrieve-cplex-mip-duals 
+--verbose 
+--stream-solver 
+--no-save-solution
+--solver cplexamp 
+--solver-options-string "iisfind=1" 
+--suffix iis
+#--dr-flat-pricing
+#--dr-demand-module gas_constant_elasticity_demand_system_2sectors
+--log-run
+--full-traceback
