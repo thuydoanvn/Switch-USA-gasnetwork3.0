@@ -12,6 +12,8 @@ Also, pricing mechanism aims to achieve revenue neutrality over the whole system
 This model will use the SWITCH 2.0 modeling framework for optimization. The model also depends on the SWITCH2.0 ***timescales***, ***financials***, and ***reporting*** modules from the switch_model package.
 
 You can find hands-on introduction, tutorials, and links to download for SWITCH2.0 at [https://switch-model.org/](https://switch-model.org/)
+
+
 **Notes** The model works best with CPLEX solver.
 
 ## Model Configuration Files
