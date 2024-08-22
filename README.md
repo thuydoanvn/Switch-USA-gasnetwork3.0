@@ -114,8 +114,10 @@ This file tell SWITCH2.0 which version of model to be called. For example: **2.0
 
 | Column Name       | Data Type | Description                             |
 | ----------------- | --------- | --------------------------------------- |
-| `gas_line_life` | INTEGER   | The lifespan of gas pipelines in years, default value is 50. |
-| `gas_transmission_fuel_cost` | FLOAT  | The fraction of gas movement volume used by gas pipeline during transmisson. |
+| `gas_line_life` | INTEGER    | The lifespan of gas pipelines in years, default value is 50.                             |
+| `gas_transmission_fuel_cost` | FLOAT  | The fraction of gas movement volume used by gas pipeline during transmisson.    |
+| `gas_line_fixed_om_fraction` | FLOAT  | Fixed operation and maintenance c, defined as a fraction of total capital cost. |
+
 
 ### Table 4: gas_lines_predetermined_directional.csv
 
