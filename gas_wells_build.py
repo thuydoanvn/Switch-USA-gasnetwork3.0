@@ -9,13 +9,13 @@ dependencies = 'switch_model.timescales','switch_model.financials'
 def define_components(m):
     m.DRILL_TYPE = Set(dimen=1)
     m.GAS_WELL_IN_ZONE = Set(
-        dimen=2
-        ,initialize=m.GAS_ZONES * m.DRILL_TYPE
-        ) #2-dimension index(zone, drill type)
+        dimen=2,
+        initialize=m.GAS_ZONES * m.DRILL_TYPE
+        ) 
     m.PROD_YEAR = Set(dimen=1)
-    m.GAS_WELL_IN_ZONE_PRODYEAR = Set( #3-dimension index(zone, drill type, production year)
-        dimen=3
-        ,initialize=m.GAS_ZONES * m.DRILL_TYPE * m.PROD_YEAR)
+    m.GAS_WELL_IN_ZONE_PRODYEAR = Set( 
+        dimen=3,
+        initialize=m.GAS_ZONES * m.DRILL_TYPE * m.PROD_YEAR)
     m.BLD_YRS_FOR_EXISTING_GAS_WELL = Set( #3-dimension index(zone, drill type, build year)
         dimen=3)
     m.gas_well_new_build_allowed = Param(
@@ -48,7 +48,7 @@ def define_components(m):
         dimen=3,
         ordered=True,
         initialize=m.GAS_WELL_IN_ZONE * m.PERIODS,
-        filter=lambda m, z, dt, p: m.gas_well_new_build_allowed[z]) #dt is abbreviation for Well Drill Type
+        filter=lambda m, z, dt, p: m.gas_well_new_build_allowed[z]) # dt is abbreviation for Well Drill Type
     m.BLD_YRS_FOR_GAS_WELL = Set(
         dimen=3,
         ordered=True,
@@ -63,7 +63,9 @@ def define_components(m):
             return (0, None)
     m.BuildWellNum = Var(
         m.BLD_YRS_FOR_GAS_WELL,
-        within=NonNegativeIntegers,
+        # Number of wells is supposed to be integer, 
+        # but setting of NonNegativeIntegers significantly slows down the model solving process,
+        within=NonNegativeReals, 
         bounds=bounds_BuildWell)
     
     # Constraints to limit the total number of wells built in each period
@@ -147,7 +149,7 @@ def define_components(m):
             for bld_yr in m.BLD_YRS_FOR_WELL_PERIOD[z,dt,period]
             if bld_yr == period - prod_yr + 1))
     
-    #Gas Supply Quantity is a sum of WellProductionCapacity, i.e.production capacity across wells in each zone in a given timeseries
+    #Gas Supply Quantity from all wells in each zone in a given timeseries
     m.GasSupplyQuantityByType = Expression(
         m.GAS_WELL_IN_ZONE, m.TIMESERIES,
         rule=lambda m, z, dt, ts: sum(
@@ -167,11 +169,16 @@ def define_components(m):
 
     m.GasWellFixedCosts = Expression(
         m.PERIODS,
-        rule=lambda m, p: sum(m.BuildWellNum[z, dt, p] *
-                   m.well_capital_cost[z,dt]*
-                   crf(m.interest_rate, m.gas_well_max_age[dt])
-                   for (z, dt, p) in m.BLD_YRS_FOR_GAS_WELL))
+        rule=lambda m, p: sum(
+            m.BuildWellNum[z, dt, bld_yr] *
+            m.well_capital_cost[z,dt]*
+            crf(m.interest_rate, m.gas_well_max_age[dt])
+            for (z, dt, bld_yr) in m.BLD_YRS_FOR_GAS_WELL
+            if bld_yr == p
+        )
+    )
     
+    m.Zone_Gas_Injections.append("GasSupplyQuantity")
     m.Cost_Components_Per_Period.append('GasWellFixedCosts')
 
 def load_inputs(m, gas_switch_data, inputs_dir):
@@ -188,7 +195,8 @@ def load_inputs(m, gas_switch_data, inputs_dir):
     )
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, 'gas_well_predetermined.csv'),
-        index=m.BLD_YRS_FOR_EXISTING_GAS_WELL, #3-dimension index(zone, drill type, build year)
+        select=('GAS_ZONES','DRILL_TYPE','gas_well_predet_build_year','gas_well_predet_num'),
+        index=m.BLD_YRS_FOR_EXISTING_GAS_WELL,
         param=(m.gas_well_predet_num)
     )
     gas_switch_data.load_aug(

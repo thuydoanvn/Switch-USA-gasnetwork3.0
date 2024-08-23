@@ -9,14 +9,13 @@ dependencies = "switch_model.timescales", "switch_model.financials"
 
 
 def define_components(m):
-    m.Zone_Gas_Injections = []
-    m.Zone_Gas_Withdrawals = []
 
+    #### LNG capital cost parameters:
     m.LNG_storage_capital_cost = Param(within=NonNegativeReals, default=110.4)
     m.LNG_liquefaction_capital_cost = Param(within=NonNegativeReals, default=77.3)
     m.LNG_vaporization_capital_cost = Param(within=NonNegativeReals, default=33.1)
 
-    #### 1. LNG STORAGE BUILD
+    #### LNG STORAGE BUILD
     # Valid locations and times for gas infrastructure
     m.GAS_ZONES_PERIODS = Set(
         dimen=2, ordered=True, initialize=lambda m: m.GAS_ZONES * m.PERIODS
@@ -71,25 +70,29 @@ def define_components(m):
         rule=lambda m, z, period: sum(
             m.BuildLNGStorageCap[z2, bld_yr] - m.LNG_storage_removed_cap[z2, bld_yr]
             for (z2, bld_yr) in m.BLD_YRS_FOR_LNG_STORAGE
-            if z2 == z and (bld_yr == "Legacy" or bld_yr <= period)
+            if z2 == z and bld_yr <= period
         ),
     )
+
     # Summarize capital costs of storage for the objective function. (real $ per MMBtu)
     m.LNGStorageFixedCosts = Expression(
         m.PERIODS,
         rule=lambda m, p: sum(
-            m.BuildLNGStorageCap[g, p] * m.LNG_storage_capital_cost
+            m.BuildLNGStorageCap[z, bld_yr] * m.LNG_storage_capital_cost
             * crf(m.interest_rate, m.LNG_storage_life)
-            for g in m.GAS_ZONES
+            for (z, bld_yr) in m.BLD_YRS_FOR_LNG_STORAGE
+            if bld_yr == p
         ),
     )
     m.Cost_Components_Per_Period.append("LNGStorageFixedCosts")
 
-    #### 2. LNG LIQUEFACTION CAPACITY
+    #### LNG LIQUEFACTION CAPACITY
 
     m.BLD_YRS_FOR_EXISTING_LNG_LIQUEFACTION = Set(dimen=2)
     m.LNG_liquefaction_predet_cap = Param(
-        m.BLD_YRS_FOR_EXISTING_LNG_LIQUEFACTION, within=NonNegativeReals, default=0
+        m.BLD_YRS_FOR_EXISTING_LNG_LIQUEFACTION, 
+        within=NonNegativeReals, 
+        default=0
     )
 
     m.NEW_LNG_LIQUEFACTION_BLD_YRS = Set(
@@ -127,22 +130,34 @@ def define_components(m):
         bounds=bounds_BuildLNGLiquefaction,
     )
 
+    m.LNGLiquefactionCapacity = Expression(
+        m.GAS_ZONES,
+        m.PERIODS,
+        rule=lambda m, z, period: sum(
+            m.BuildLNGLiquefactionCap[z2, bld_yr] - m.LNG_liquefaction_removed_cap[z2, bld_yr]
+            for (z2, bld_yr) in m.BLD_YRS_FOR_LNG_LIQUEFACTION
+            if z2 == z and bld_yr <= period
+        ),
+    )
     # Summarize capital costs of storage for the objective function. (real $ per MMBtu)
     m.LNGLiquefactionFixedCosts = Expression(
         m.PERIODS,
         rule=lambda m, p: sum(
-            m.BuildLNGLiquefactionCap[g, p] * m.LNG_liquefaction_capital_cost
+            m.LNGLiquefactionCapacity[z, bld_yr] * m.LNG_liquefaction_capital_cost
             * crf(m.interest_rate, m.LNG_storage_life)
-            for g in m.GAS_ZONES
+            for (z, bld_yr) in m.BLD_YRS_FOR_LNG_LIQUEFACTION
+            if bld_yr == p
         ),
     )
     m.Cost_Components_Per_Period.append("LNGLiquefactionFixedCosts")
 
-    #### 3. LNG VAPORIZATION CAPACITY
+    ####  LNG VAPORIZATION CAPACITY
 
     m.BLD_YRS_FOR_EXISTING_LNG_VAPORIZATION = Set(dimen=2)
     m.LNG_vaporization_predet_cap = Param(
-        m.BLD_YRS_FOR_EXISTING_LNG_VAPORIZATION, within=NonNegativeReals, default=0
+        m.BLD_YRS_FOR_EXISTING_LNG_VAPORIZATION, 
+        within=NonNegativeReals, 
+        default=0
     )
 
     m.NEW_LNG_VAPORIZATION_BLD_YRS = Set(
@@ -159,7 +174,9 @@ def define_components(m):
     )
 
     m.LNG_vaporization_removed_cap = Param(
-        m.BLD_YRS_FOR_LNG_VAPORIZATION, within=NonNegativeReals, default=0
+        m.BLD_YRS_FOR_LNG_VAPORIZATION, 
+        within=NonNegativeReals, 
+        default=0
     )
 
     m.LNG_vaporization_life = Param(within=NonNegativeReals, default=50)
@@ -180,13 +197,24 @@ def define_components(m):
         bounds=bounds_BuildLNGVaporization,
     )
 
+    m.LNGVaporizationCapacity = Expression(
+        m.GAS_ZONES,
+        m.PERIODS,
+        rule=lambda m, z, period: sum(
+            m.BuildLNGVaporizationCap[z2, bld_yr] - m.LNG_vaporization_removed_cap[z2, bld_yr]
+            for (z2, bld_yr) in m.BLD_YRS_FOR_LNG_VAPORIZATION
+            if z2 == z and bld_yr <= period
+        ),
+    )
+  
     # Summarize capital costs of storage for the objective function. (real $ per MMBtu)
     m.LNGVaporizationFixedCosts = Expression(
         m.PERIODS,
         rule=lambda m, p: sum(
-            m.BuildLNGVaporizationCap[g, p] * m.LNG_vaporization_capital_cost
+            m.LNGVaporizationCapacity[z, bld_yr] * m.LNG_vaporization_capital_cost
             * crf(m.interest_rate, m.LNG_storage_life)
-            for g in m.GAS_ZONES
+            for (z, bld_yr) in m.BLD_YRS_FOR_LNG_VAPORIZATION
+            if bld_yr == p
         ),
     )
     m.Cost_Components_Per_Period.append("LNGVaporizationFixedCosts")
@@ -240,8 +268,11 @@ def define_components(m):
     )
 
     m.LNG_ship_efficiency = Param(
-        m.LNG_ROUTE, within=PercentFraction, default=1
-    )  # assume no loss during shipping (short distance)
+        m.LNG_ROUTE, 
+        within=PercentFraction, 
+        # assume no loss during shipping (short distance)
+        default=1
+    )  
 
     m.LNGReceived = Expression(
         m.LNG_ROUTE_TIMESERIES,
@@ -256,7 +287,9 @@ def define_components(m):
     # international imports, receive from (- ship to) other states, liquefy from NG
 
     m.LNG_import_ref_quantity = Param(
-        m.GAS_ZONES_TIMESERIES, within=NonNegativeReals, default=0
+        m.GAS_ZONES_TIMESERIES, 
+        within=NonNegativeReals, 
+        default=0
     )
     m.SumLNGReceived = Expression(
         m.GAS_ZONES_TIMESERIES,
@@ -266,13 +299,13 @@ def define_components(m):
         ),
     )
     m.LNGLiquefiedFromNG = Var(m.GAS_ZONES_TIMESERIES, within=NonNegativeReals)
-    # Storage is needed to store LNG produced (before it can be shipped to somewhere else)
-    m.LNG_Liquefied_Volume_Upper_Limit = Constraint(
-        m.GAS_ZONES_TIMESERIES,
-        rule=lambda m, z, ts: m.LNGLiquefiedFromNG[z, ts]
-        <= m.LNGStorageCapacity[z, m.ts_period[ts]],
-    )
 
+    # # LNG Liquefaction amount must be lower than maximum capacity available at each zone-timeseries
+    # m.LNG_Liquefied_Volume_Upper_Limit = Constraint(
+    #     m.GAS_ZONES_TIMESERIES,
+    #     rule=lambda m, z, ts: m.LNGLiquefiedFromNG[z, ts]
+    #     <= m.LNGLiquefactionCapacity[z, m.ts_period[ts]],
+    # )
     ### the amount of gas added to storage in each gas zone during each timeseries
     m.LNGStorageAdditionQuantity = Expression(
         m.GAS_ZONES_TIMESERIES,
@@ -280,8 +313,11 @@ def define_components(m):
         + m.SumLNGReceived[z, ts]
         + m.LNGLiquefiedFromNG[z, ts],
     )
+    
+    # LNGStorageCapacity
+    # Storage is needed to store LNG produced (before it can be shipped to somewhere else)
 
-    # 5.1 LNG withdrawals from storage for: ship to other states, regasify to NG
+    # 5.2 LNG withdrawals from storage for: ship to other states, regasify to NG
     m.SumLNGShipped = Expression(
         m.GAS_ZONES_TIMESERIES,
         rule=lambda m, z, ts: sum(
@@ -319,75 +355,55 @@ def define_components(m):
         initialize=lambda m, ts: m.TS_IN_PERIOD[m.ts_period[ts]].prevw(ts),
     )
 
+
     # track state of storage: previous quantity + injections - withdrawals
     def Track_State_Of_LNG_Storage_rule(m, z, ts):
-        return m.LNGStorageQuantity[z, ts] == m.LNGStorageQuantity[
-            z, m.ts_previous[ts]
-        ] + (
+        return m.LNGStorageQuantity[z, ts] == m.LNGStorageQuantity[z, m.ts_previous[ts]] + (
             m.LNGStorageAdditionQuantity[z, ts] - m.LNGStorageWithdrawalQuantity[z, ts]
         )
 
     m.Track_State_Of_LNG_Storage = Constraint(
-        m.GAS_ZONES_TIMESERIES, rule=Track_State_Of_LNG_Storage_rule
+        m.GAS_ZONES_TIMESERIES, 
+        rule=Track_State_Of_LNG_Storage_rule
     )
 
     # 6.2 LNG storage capacity constraint
     # quantity of gas in storage in each gas zone must never be below zero or
     # above the amount of non-retired storage capacity existing during that timeseries
 
-    def State_Of_LNG_Storage_Upper_Limit_rule(m, z, ts):
-        return m.LNGStorageQuantity[z, ts] <= m.LNGStorageCapacity[z, m.ts_period[ts]]
-
     m.State_Of_LNG_Storage_Upper_Limit = Constraint(
-        m.GAS_ZONES_TIMESERIES, rule=State_Of_LNG_Storage_Upper_Limit_rule
+        m.GAS_ZONES_TIMESERIES, 
+        rule=lambda m, z, ts: m.LNGStorageQuantity[z, ts] 
+        <= m.LNGStorageCapacity[z, m.ts_period[ts]]
     )
+
     # storages can only complete the specified number of cycles per year, averaged over each period
     m.LNG_Storage_Cycle_Limit = Constraint(
         m.GAS_ZONES_PERIODS,
-        rule=lambda m, g, p:
+        rule=lambda m, z, p:
         # solvers sometimes perform badly with infinite constraint
         Constraint.Skip
-        if m.LNG_storage_max_cycles_per_year[g] == float("inf")
+        if m.LNG_storage_max_cycles_per_year[z] == float("inf")
         else (
             sum(
-                m.LNGStorageWithdrawalQuantity[g, ts] * m.ts_scale_to_period[ts]
+                m.LNGStorageWithdrawalQuantity[z, ts] * m.ts_scale_to_period[ts]
                 for ts in m.TS_IN_PERIOD[p]
             )
-            <= m.LNG_storage_max_cycles_per_year[g]
-            * m.LNGStorageCapacity[g, p]
+            <= m.LNG_storage_max_cycles_per_year[z]
+            * m.LNGStorageCapacity[z, p]
             * m.period_length_years[p]
         ),
     )
 
     # 6.3 LNG Liquefaction capacity constraint
-    m.LNGLiqefactionCapacity = Expression(
-        m.GAS_ZONES,
-        m.PERIODS,
-        rule=lambda m, z, period: sum(
-            m.BuildLNGLiquefactionCap[z2, bld_yr]
-            - m.LNG_liquefaction_removed_cap[z2, bld_yr]
-            for (z2, bld_yr) in m.BLD_YRS_FOR_LNG_LIQUEFACTION
-            if z2 == z and (bld_yr == "Legacy" or bld_yr <= period)
-        ),
-    )
 
     m.State_Of_LNG_Liquefaction_Upper_Limit = Constraint(
         m.GAS_ZONES_TIMESERIES,
         rule=lambda m, z, ts: m.LNGLiquefiedFromNG[z, ts]
-        <= m.LNGLiqefactionCapacity[z, m.ts_period[ts]],
+        <= m.LNGLiquefactionCapacity[z, m.ts_period[ts]],
     )
 
     # 6.4 LNG VAPORIZATION capacity constraint
-    m.LNGVaporizationCapacity = Expression(
-        m.GAS_ZONES,
-        m.PERIODS,
-        rule=lambda m, z, period: sum(
-            m.BuildLNGVaporizationCap[z2, bld_yr]
-            - m.LNG_vaporization_removed_cap[z2, bld_yr]
-            for (z2, bld_yr) in m.BLD_YRS_FOR_LNG_VAPORIZATION
-            if z2 == z and (bld_yr == "Legacy" or bld_yr <= period)
-        ),
-    )
 
     m.State_Of_LNG_Vaporization_Upper_Limit = Constraint(
         m.GAS_ZONES_TIMESERIES,
@@ -396,58 +412,56 @@ def define_components(m):
     )
 
     # 7. Operation/Variable Cost of LNG
+    ## Some data shows, in total, gas loss during NG-LNG-storage_NG is about 11.5% of feed gas
+    ## Here we set 2.5% of feed gas is lost during regasification, 9% lost during liquefaction
+    ## and assume no loss during storage
 
     # 7.1 Liquefaction cost
     ## Fuel cost for Liquefaction: 9% of feed gas
-    m.LNG_from_NG_loss_ratio = Param(m.GAS_ZONES, within=PercentFraction, default=0.09)
-    # NG amount needed for LNG Liquefaction
+    m.LNG_from_NG_loss_ratio = Param(within=PercentFraction, default=0.09)
+    # NG amount needed for LNG Liquefaction, including the loss volume in term of heat amount (MMBtu)
     m.GasQuantityLiquefiedToLNG = Expression(
         m.GAS_ZONES_TIMESERIES,
         rule=lambda m, z, ts: m.LNGLiquefiedFromNG[z, ts]
-        / (1 - m.LNG_from_NG_loss_ratio[z]),
+        / (1 - m.LNG_from_NG_loss_ratio),
     )
     m.Zone_Gas_Withdrawals.append("GasQuantityLiquefiedToLNG")
 
-    # Liquefaction cost in term of heat amount (MMBtu)
+    # Get gas loss volume to to compute liquefaction cost in term of dollars 
+    # (done in gas_network_balance.py)
     m.LNGLiquefactionLoss = Expression(
         m.GAS_ZONES_TIMESERIES,
         rule=lambda m, z, ts: m.GasQuantityLiquefiedToLNG[z, ts]
-        * m.LNG_from_NG_loss_ratio[z],
+        * m.LNG_from_NG_loss_ratio,
     )
-    m.Zone_Gas_Withdrawals.append("LNGLiquefactionLoss")
-    # Liquefaction cost in term of dollars: compute later in gas_network_balance.py
 
     # 7.2 Regasification cost
     ## Fuel cost for regasification: 2.5% of feed gas
-    m.LNG_to_NG_loss_ratio = Param(m.GAS_ZONES, within=PercentFraction, default=0.025)
-    ## In total: fuel loss is about 11.5% of feed gas
-    # m.LNG_store_to_release_ratio = Param(
-    #     m.GAS_ZONES,
-    #     within=PercentFraction,
-    #     default=0.885) 
+    m.LNG_to_NG_loss_ratio = Param(within=PercentFraction, default=0.025)
 
-    ## NG amount obtained from regasifying LNG
+    ## NG amount obtained from regasifying LNG, exclude the gas loss in term of heat amount (MMBtu)
     m.GasQuantityFromLNG = Expression(
         m.GAS_ZONES_TIMESERIES,
         rule=lambda m, z, ts: m.LNGRegasifiedToNG[z, ts]
-        * (1 - m.LNG_to_NG_loss_ratio[z]),
+        * (1 - m.LNG_to_NG_loss_ratio),
     )
     m.Zone_Gas_Injections.append("GasQuantityFromLNG")
 
-    ## Regasification cost in term of heat amount (MMBtu)
+    ## Get the gas loss to compute the regasification (i.e.vaporization) cost in term of dollars
+    # done later in gas_network_balance.py
     m.LNGRegasificationLoss = Expression(
         m.GAS_ZONES_TIMESERIES,
-        rule=lambda m, z, ts: m.LNGRegasifiedToNG[z, ts] * m.LNG_to_NG_loss_ratio[z],
-    )
-    m.Zone_Gas_Withdrawals.append("LNGRegasificationLoss")
-
-    ## Regasification (i.e.Vaporization) cost in term of dollars: compute later in gas_network_balance.py
+        rule=lambda m, z, ts: m.LNGRegasifiedToNG[z, ts] * m.LNG_to_NG_loss_ratio,
+    )   
 
     # 7.3 LNG shipping cost
 
     m.LNG_shipping_unit_cost = Param(
-        m.LNG_ROUTE, within=NonNegativeReals, default=0.011
-    )  # $1.1/100km/mmbtu
+        m.LNG_ROUTE, 
+        within=NonNegativeReals, 
+        # $1.1/100km/mmbtu
+        default=0.011
+    )  
 
     m.LNGShippingCostsPerTP = Expression(
         m.TIMEPOINTS,
@@ -474,6 +488,8 @@ def load_inputs(m, gas_switch_data, inputs_dir):
             "LNG_route_gz2",
             "LNG_route_distance",
             "LNG_flow_allowed",
+            "LNG_shipping_unit_cost_dmmbtukm",
+            "LNG_ship_efficiency",
         ),
         index=m.LNG_ROUTE,
         param=(
@@ -481,13 +497,15 @@ def load_inputs(m, gas_switch_data, inputs_dir):
             m.LNG_route_gz2,
             m.LNG_route_distance,
             m.LNG_flow_allowed,
+            m.LNG_shipping_unit_cost,
+            m.LNG_ship_efficiency,
         ),
     )
     # LNG storage
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, "LNG_storage_predetermined.csv"),
-        # auto_select=True,
-        select=("GAS_ZONES", "LNG_storage_predet_build_year", "LNG_storage_predet_cap", "LNG_storage_removed_cap"),
+        select=("GAS_ZONES", "LNG_storage_predet_build_year", 
+                "LNG_storage_predet_cap", "LNG_storage_removed_cap"),
         index=m.BLD_YRS_FOR_EXISTING_LNG_STORAGE,
         param=(m.LNG_storage_predet_cap, m.LNG_storage_removed_cap),
     )
@@ -517,7 +535,11 @@ def load_inputs(m, gas_switch_data, inputs_dir):
         param=(m.LNG_vaporization_predet_cap,
                m.LNG_vaporization_removed_cap),
     )
-
+    gas_switch_data.load_aug(
+        filename=os.path.join(inputs_dir, "LNG_parameters.csv"),
+        select=("LNG_from_NG_loss_ratio", "LNG_to_NG_loss_ratio"),
+        param=(m.LNG_from_NG_loss_ratio, m.LNG_to_NG_loss_ratio),
+    )
     # LNG imports
     gas_switch_data.load_aug(
         filename=os.path.join(inputs_dir, "LNG_imports.csv"),

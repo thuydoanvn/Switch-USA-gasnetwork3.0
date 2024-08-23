@@ -321,7 +321,7 @@ def pre_iterate(m):
 
     converged = (
         m.iteration_number > 0
-        and abs(prev_cost - best_cost) / abs(prev_direct_cost) <= 0.0001
+        and abs(prev_cost - best_cost) / abs(prev_direct_cost) <= 0.001 #or better but take longer to solve: 0.0001
     )
 
     return converged
@@ -800,7 +800,7 @@ def write_batch_results(m):
 def summary_headers(m):
     return (
         ("tag", "iteration", "total_cost")
-        + tuple("total_direct_costs_per_year_" + str(p) for p in m.PERIODS)
+        + tuple("total_direct_costs_" + str(p) for p in m.PERIODS)
         + tuple("DR_Welfare_Cost_" + str(p) for p in m.PERIODS)
         + tuple("payment " + str(ds) + str(p) for ds in m.DEMAND_SECTORS for p in m.PERIODS)
         + tuple("gas sold " + str(ds) + str(p) for ds in m.DEMAND_SECTORS for p in m.PERIODS)
@@ -818,7 +818,8 @@ def summary_values(m):
             m.options.scenario_name,
             m.iteration_number,
             # total cost (all periods) at base-year dollar value
-            m.SystemCost + sum(m.gl_cost_adder[p] * m.bring_annual_costs_to_base_year[p] for p in m.PERIODS),  
+            # m.SystemCost + sum(m.gl_cost_adder[p] * m.bring_annual_costs_to_base_year[p] for p in m.PERIODS),  
+            m.SystemCost + sum(m.gl_cost_adder[p] for p in m.PERIODS),  
         ]
     )
 

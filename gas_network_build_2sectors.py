@@ -14,6 +14,8 @@ dependencies = "switch_model.timescales", "switch_model.financials"
 
 
 def define_components(m):
+    m.Zone_Gas_Injections = []
+    m.Zone_Gas_Withdrawals = []
     # indexing sets
     m.GAS_ZONES = Set(dimen=1, ordered=True)
     m.GAS_ZONES_TIMESERIES = Set(
@@ -37,13 +39,11 @@ def define_components(m):
     m.NEW_GAS_LINE_BLD_YRS = Set(
         dimen=2,
         initialize=m.GAS_LINES * m.PERIODS,
-        filter=lambda m, gl, p: m.gas_line_new_build_allowed[gl],
+        filter=lambda m, gl,p: m.gas_line_new_build_allowed[gl],
     )
-    m.BLD_YRS_FOR_REMOVED_GL = Set(dimen=2)
     m.BLD_YRS_FOR_GAS_LINE = Set(
         dimen=2,
         initialize=lambda m: m.BLD_YRS_FOR_EXISTING_GL
-        | m.BLD_YRS_FOR_REMOVED_GL
         | m.NEW_GAS_LINE_BLD_YRS,
     )
     m.gas_line_removed_cap_general = Param(
@@ -132,11 +132,9 @@ def define_components(m):
             m.gas_d_line[zone_from, zone_to]
         ],
     )
-    m.BLD_YRS_FOR_REMOVED_D_GL = Set(dimen=3)
     m.BLD_YRS_FOR_GAS_D_LINE = Set(
         dimen=3,
         initialize=lambda m: m.BLD_YRS_FOR_EXISTING_D_GL
-        | m.BLD_YRS_FOR_REMOVED_D_GL
         | m.NEW_GAS_D_LINE_BLD_YRS,
     )
     m.gas_line_removed_cap_directional = Param(
@@ -253,10 +251,7 @@ def define_components(m):
         rule=lambda m, p: sum(
             m.BuildDirectionalGl[zone_from, zone_to, bld_yr]
             * m.gas_line_length[m.gas_d_line[zone_from, zone_to]]
-            * (
-                m.directional_gas_line_capital_cost[m.gas_d_line[zone_from, zone_to]]
-                * (1 + m.gas_line_fixed_om_fraction)
-            )
+            * (m.directional_gas_line_capital_cost[m.gas_d_line[zone_from, zone_to]] * (1 + m.gas_line_fixed_om_fraction))
             * crf(m.interest_rate, m.gas_line_life)
             for (zone_from, zone_to, bld_yr) in m.BLD_YRS_FOR_GAS_D_LINE
             if bld_yr == p
@@ -283,7 +278,6 @@ def define_components(m):
         initialize=m.GAS_ZONES * m.GAS_STORAGE_TYPES * m.PERIODS,
         filter=lambda m, z, ty, p: m.gas_storage_new_build_allowed[z, ty],
     )
-    m.BLD_YRS_FOR_REMOVED_GAS_STORAGE_TYPE = Set(dimen=3)
     m.BLD_YRS_FOR_GAS_STORAGE_TYPE = Set(
         dimen=3,
         ordered=True,
@@ -310,7 +304,7 @@ def define_components(m):
     m.gas_storage_max_cycles_per_year = Param(
         m.GAS_STORAGE_TYPES, within=NonNegativeReals, default=float('inf')
     )
-    # Valid locations and times for gas infrastructure
+    # # Valid locations and times for gas underground storage
     m.GZ_STORAGE_TYPE_PERIODS = Set(
         dimen=3,
         ordered=True,
@@ -348,19 +342,14 @@ def define_components(m):
     # Calculate fixed costs for all storage capacity come to service in period p
     m.gas_storage_fixed_om_fraction = Param(within=NonNegativeReals, default=0)
 
-    m.GAS_STORAGE_TYPE_BUILDS = Set(
-        dimen=2,
-        initialize=m.GZ_STORAGE_TYPES,
-        filter=lambda m, z, ty: m.gas_storage_new_build_allowed[z, ty],
-    )
-
     m.GasStorageFixedCosts = Expression(
         m.PERIODS,
         rule=lambda m, p: sum(
-            m.BuildStorageCap[z, ty, p] 
+            m.BuildStorageCap[z, ty, bld_yr] 
             * (m.gas_storage_capital_cost[z, ty] * (1 + m.gas_storage_fixed_om_fraction)) 
             * crf(m.interest_rate, m.gas_storage_life[ty])
-            for (z, ty) in m.GAS_STORAGE_TYPE_BUILDS
+            for (z, ty, bld_yr) in m.BLD_YRS_FOR_GAS_STORAGE_TYPE
+            if bld_yr == p
         ),
     )
 

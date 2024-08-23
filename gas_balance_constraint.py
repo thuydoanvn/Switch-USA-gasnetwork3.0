@@ -68,7 +68,7 @@ def load_inputs(m, gas_switch_data, inputs_dir):
     
 def post_solve(instance, outdir):
     mod = instance
-    # infrastructure built
+    ## infrastructure built
     write_table(
         instance,
         instance.NEW_GAS_STORAGE_TYPE_BLD_YRS,
@@ -114,31 +114,34 @@ def post_solve(instance, outdir):
             m.GlCapacityNameplate[m.gas_d_line[zone_from, zone_to], p],
         ),
     )
-    write_table(
-        instance,
-        instance.PERIODS,
-        output_file=os.path.join(outdir, "FixedCosts.csv"),
-        headings=(
-            "period",
-            "GasStorageFixedCosts",
-            "GeneralGlFixedCosts",
-            "DirectionalGlFixedCosts",
-            "LNGStorageFixedCosts",
-            "LNGLiquefactionFixedCosts",
-            "LNGVaporizationFixedCosts",
-            "GasWellFixedCosts",
-        ),
-        values=lambda m, p: (
-            p,
-            m.GasStorageFixedCosts[p],
-            m.GeneralGlFixedCosts[p],
-            m.DirectionalGlFixedCosts[p],
-            m.LNGStorageFixedCosts[p],
-            m.LNGLiquefactionFixedCosts[p],
-            m.LNGVaporizationFixedCosts[p],
-            m.GasWellFixedCosts[p],
-        ),
-    )
+
+    # Only need this when we have more than one period
+    # write_table(
+    #     instance,
+    #     instance.PERIODS,
+    #     output_file=os.path.join(outdir, "FixedCostPerPeriod.csv"),
+        
+    #     headings=(
+    #         "period",
+    #         "GasStorageFixedCosts",
+    #         "GeneralGlFixedCosts",
+    #         "DirectionalGlFixedCosts",
+    #         "LNGStorageFixedCosts",
+    #         "LNGLiquefactionFixedCosts",
+    #         "LNGVaporizationFixedCosts",
+    #         "GasWellFixedCosts",
+    #     ),
+    #     values=lambda m, p: (
+    #         p,
+    #         m.GasStorageFixedCosts[p],
+    #         m.GeneralGlFixedCosts[p],
+    #         m.DirectionalGlFixedCosts[p],
+    #         m.LNGStorageFixedCosts[p],
+    #         m.LNGLiquefactionFixedCosts[p],
+    #         m.LNGVaporizationFixedCosts[p],
+    #         m.GasWellFixedCosts[p],
+    #     ),
+    # )
     # Gas flows and volumes
     write_table(
         instance,
@@ -161,29 +164,6 @@ def post_solve(instance, outdir):
             m.GasStorageWithdrawalQuantity[z, ty, ts],
             m.GasStorageNetWithdrawal[z, ty, ts],
             m.GasStorageQuantity[z, ty, ts],
-        ),
-    )
-
-    # Total Gas cost per period
-    write_table(
-        instance,
-        instance.PERIODS,
-        output_file=os.path.join(outdir, "gas_costs.csv"),
-        headings=(
-            "PERIOD",
-            "SystemCostPerPeriod",
-            "SystemCostPerYear_Real",
-            "GasCostReal_per_MMBtu",
-            "SystemDemand_MMBtu",
-        ),
-        values=lambda m, p: (
-            p,
-            m.SystemCostPerPeriod[p] + m.gl_cost_adder[p],
-            (m.SystemCostPerPeriod[p] + m.gl_cost_adder[p])/ m.bring_annual_costs_to_base_year[p],
-            (m.SystemCostPerPeriod[p] + m.gl_cost_adder[p])
-            / m.bring_annual_costs_to_base_year[p]
-            / sum(m.zone_total_gas_demand_in_period_mmbtu[z, p] for z in m.GAS_ZONES),
-            sum(m.zone_total_gas_demand_in_period_mmbtu[z, p] for z in m.GAS_ZONES),
         ),
     )
 
@@ -211,55 +191,30 @@ def post_solve(instance, outdir):
     )
     write_table(
         instance,
-        instance.NEW_LNG_STORAGE_BLD_YRS,
-        output_file=os.path.join(outdir, "LNG_storage_build.csv"),
+        instance.GAS_ZONES_PERIODS,
+        output_file=os.path.join(outdir, "LNG_build.csv"),
         headings=(
             "gas_zone",
             "period",
             "BuildLNGStorageCap",
             "LNG_storage_total_cap",
-        ),
-        values=lambda m, z, p: (
-            z,
-            p,
-            m.BuildLNGStorageCap[z, p],
-            m.LNGStorageCapacity[z, p],
-        ),
-    )
-    write_table(
-        instance,
-        instance.NEW_LNG_LIQUEFACTION_BLD_YRS,
-        output_file=os.path.join(outdir, "LNG_liquefaction_build.csv"),
-        headings=(
-            "gas_zone",
-            "period",
             "BuildLNGLiquefactionCap",
-            "LNGLiqefactionCapacity",
-        ),
-        values=lambda m, z, p: (
-            z,
-            p,
-            m.BuildLNGLiquefactionCap[z, p],
-            m.LNGLiqefactionCapacity[z, p],
-        ),
-    )
-    write_table(
-        instance,
-        instance.NEW_LNG_VAPORIZATION_BLD_YRS,
-        output_file=os.path.join(outdir, "LNG_vaporization_build.csv"),
-        headings=(
-            "gas_zone",
-            "period",
+            "LNGLiquefactionCapacity",
             "BuildLNGVaporizationCap",
             "LNGVaporizationCapacity",
         ),
         values=lambda m, z, p: (
             z,
             p,
+            m.BuildLNGStorageCap[z, p],
+            m.LNGStorageCapacity[z, p],
+            m.BuildLNGLiquefactionCap[z, p],
+            m.LNGLiquefactionCapacity[z, p],
             m.BuildLNGVaporizationCap[z, p],
             m.LNGVaporizationCapacity[z, p],
         ),
     )
+    
     write_table(
         instance,
         instance.GAS_ZONES_TIMESERIES,
@@ -287,6 +242,34 @@ def post_solve(instance, outdir):
             m.LNGStorageWithdrawalQuantity[z, ts],
         ),
     )
+    # Total Gas cost per period
+    write_table(
+        instance,
+        instance.PERIODS,
+        output_file=os.path.join(outdir, "gas_costs.csv"),
+        headings=(
+            "PERIOD",
+            "SystemCostPerYear",
+            "SystemCostPerYear_Real",
+            "GasCost_per_MMBtu",
+            "SystemDemand_base_MMBtu",
+            "SystemDemand_final_MMBtu",
+        ),
+        values=lambda m, p: (
+            p,
+            m.SystemCostPerPeriod[p] + m.gl_cost_adder[p],
+            (m.SystemCostPerPeriod[p] + m.gl_cost_adder[p])*m.bring_annual_costs_to_base_year[p],
+            (m.SystemCostPerPeriod[p] + m.gl_cost_adder[p])*m.bring_annual_costs_to_base_year[p]
+            / sum(getattr(m, component)[z, ts] for component in m.Zone_Gas_Withdrawals
+                if component in ("gas_demand_total", "FlexibleDemandTotal") if hasattr(m, component)
+                for (z, ts) in m.GAS_ZONES_TIMESERIES),
+            sum(m.zone_total_gas_demand_in_period_mmbtu[z, p] for z in m.GAS_ZONES),
+            sum(getattr(m, component)[z, ts] for component in m.Zone_Gas_Withdrawals
+                if component in ("gas_demand_total", "FlexibleDemandTotal") if hasattr(m, component)
+                for (z, ts) in m.GAS_ZONES_TIMESERIES)
+        ),
+    )
+
     # print("Shadow price example:")
     # print(
     #     (instance.dual[instance.Balance[('WV', 20170322)]]

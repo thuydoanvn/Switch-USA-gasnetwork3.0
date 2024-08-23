@@ -57,7 +57,7 @@ def define_components(m):
     # Register net transmission as contributing to zonal energy balance
     m.Zone_Gas_Injections.append('GLGasNet')
 
-    #2 GAS STORAGE
+    # GAS STORAGE
     m.GZ_STORAGE_TYPE_TIMESERIES = Set(
         dimen=3,
         ordered=True,
@@ -111,6 +111,7 @@ def define_components(m):
     m.State_Of_Storage_Upper_Limit = Constraint(
         m.GZ_STORAGE_TYPE_TIMESERIES,
         rule=State_Of_Storage_Upper_Limit_rule)
+    
     ### storages can only complete the specified number of cycles per year, averaged over each period
     m.Storage_Cycle_Limit = Constraint(
         m.GZ_STORAGE_TYPE_PERIODS,
@@ -118,7 +119,8 @@ def define_components(m):
             # solvers sometimes perform badly with infinite constraint
             Constraint.Skip if m.gas_storage_max_cycles_per_year[ty] == float('inf')
             else (
-                sum(m.GasStorageWithdrawalQuantity[z, ty, ts] * m.ts_scale_to_year[ts] for ts in m.TS_IN_PERIOD[p])
+                sum(m.GasStorageWithdrawalQuantity[z, ty, ts] *
+                    m.ts_scale_to_year[ts] for ts in m.TS_IN_PERIOD[p])
                 <=
                 m.GasStorageCapacity[z, ty, p] * m.gas_storage_max_cycles_per_year[ty]
             ))
@@ -142,7 +144,6 @@ def define_components(m):
     m.DEMAND_SECTORS = Set(dimen=1, initialize=['EI', 'RC'])
     
     ## use demand price to compute cost of fuel loss
-    ## for simplicity, assume the cost of natural gas loss during transmission, storage, and LNG processing is the same as the cost of gas in the RC sector.
     m.gas_ref_price = Param(
         m.GAS_ZONES, m.TIMESERIES, m.DEMAND_SECTORS,
         within=NonNegativeReals,
@@ -150,16 +151,18 @@ def define_components(m):
         # [or 5.17 = weighted average of gas price in US in 2019]
         default=6.96 
     )
-    
+    # ## for simplicity, assume the cost of natural gas loss during transmission, storage, 
+    # and LNG processing is the same as the cost of gas in the EI sector.
     m.gas_unit_cost = Param(
         m.GAS_ZONES, m.TIMESERIES,
-        rule=lambda m, z, ts: (m.gas_ref_price[z,ts,'RC']) 
+        rule=lambda m, z, ts: (m.gas_ref_price[z,ts,'EI']) 
     )
     ## Demand in each sector
     m.gas_demand_ref_quantity = Param(
         m.GAS_ZONES, m.TIMESERIES, m.DEMAND_SECTORS,
         within=NonNegativeReals,
-        default=0.001 #avoid 'float division by zero' error in the 'gas_iterative_demand_response.py'
+        #avoid 'float division by zero' error in the 'gas_iterative_demand_response.py'
+        default=0.001 
     )
     ## Total demand, sum of all sectors
     m.gas_demand_total = Param(
@@ -173,7 +176,9 @@ def define_components(m):
     )
 
     m.Zone_Gas_Withdrawals.append('gas_demand_total')
+
     # Total demand in each period
+    # notes: When including demand response, this does not compute sum of flexible demand
     m.zone_total_gas_demand_in_period_mmbtu = Param(
         m.GAS_ZONES, m.PERIODS,
         within=NonNegativeReals,
@@ -182,12 +187,10 @@ def define_components(m):
                 for ts in m.TS_IN_PERIOD[p]))
     )
 
-    # #5 OPERATIONAL COST
-    # # 5.1 GAS PRODUCTION COST
+    # OPERATIONAL COST
+    # GAS PRODUCTION COST
     ## The amount of gas produced in each gas zone during each period depends on
-    # number of wells available and production_year.
-    ### Determined in gas_well_build.py
-    m.Zone_Gas_Injections.append("GasSupplyQuantity")
+    # number of wells available and production_year, determined in gas_well_build.py
     
     # Summarize gas production costs in each timepoint for the objective function
     m.gas_well_operating_cost_perMMbtud = Param(
@@ -220,7 +223,8 @@ def define_components(m):
     # 5.2 TRANSMISSION FUEL COST: the volume of gas pipeline uses was also included as m.gl_efficiency
     m.gas_transmission_fuel_cost = Param(
         within=NonNegativeReals,
-        # pipeline and distribution uses is 1.5% of total U.S. inter-state movement volume (US average, 2019, EIA data). 
+        # pipeline and distribution uses is 1.5% 
+        # of total U.S. inter-state movement volume (US average, 2019, EIA data). 
         # For simplicity, use the same number for all states.
         default=0.03 
     )
