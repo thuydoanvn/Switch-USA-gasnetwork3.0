@@ -267,10 +267,18 @@ This file tell SWITCH2.0 which version of model to be called. For example: **2.0
 | `LNG_ROUTE`          | TEXT      | The identifier for the LNG route, typically combining the starting and ending gas zones. |
 | `LNG_route_gz1`      | TEXT      | The starting gas zone for the LNG route.                               |
 | `LNG_route_gz2`      | TEXT      | The ending gas zone for the LNG route.                                 |
-| `LNG_route_distance` | FLOAT     | The distance of the LNG route in kilometers.                                                  |
-| `LNG_flow_allowed`   | BOOLEAN   | Indicates whether LNG transportation is allowed on this route.                                     |
+| `LNG_route_distance` | FLOAT     | The distance of the LNG route in kilometers.                           |
+| `LNG_flow_allowed`   | BOOLEAN   | 1 if LNG transportation is allowed on this route.                                     |
+| `LNG_ship_efficiency`| FLOAT     | Fraction of LNG loss during transportation.                                     |
 
-### Table 20: gas_demand.csv
+### Table 20: LNG_parameters.csv
+
+| Column Name            | Data Type | Description                                                                              |
+| ---------------------- | --------- | ---------------------------------------------------------------------------------------- |
+| `LNG_from_NG_loss_ratio`    | FLOAT      | The fraction of feed dry gas loss during liquefacction process.                |
+| `LNG_to_NG_loss_ratio`      | FLOAT      | The fraction of feed LNG lossduring vaporization process.                      |
+
+### Table 21: gas_demand.csv
 
 | Column Name                 | Data Type | Description                                                                              |
 | --------------------------- | --------- | ---------------------------------------------------------------------------------------- |
@@ -280,14 +288,14 @@ This file tell SWITCH2.0 which version of model to be called. For example: **2.0
 | `gas_ref_price`           | FLOAT     | The reference price of natural gas in dollars per million British thermal units (MMBTU). |
 | `gas_demand_ref_quantity` | FLOAT     | The reference quantity of natural gas demand in million BTU (MMBtu).                     |
 
-### Table 21: RC_price_markup.csv
+### Table 22: RC_price_markup.csv
 
 | Column Name         | Data Type | Description                                                         |
 | ------------------- | --------- | ------------------------------------------------------------------- |
 | `GAS_ZONES`       | TEXT      | The gas zones where the price markup is applied. |
 | `RC_price_markup` | FLOAT     | The price markup applied to the Residential and Commercial to account for distribution cost, in $/MMBtu. |
 
-### Table 22: gas_trade.csv
+### Table 23: gas_trade.csv
 
 | Column Name                 | Data Type | Description                                                                   |
 | --------------------------- | --------- | ----------------------------------------------------------------------------- |
@@ -296,7 +304,7 @@ This file tell SWITCH2.0 which version of model to be called. For example: **2.0
 | `gas_import_ref_quantity` | FLOAT     | The quantity of natural gas imported in million BTU (MMBtu).        |
 | `gas_export_ref_quantity` | FLOAT     | The quantity of natural gas exported in million BTU (MMBtu).        |
 
-### Table 23: LNG_imports.csv
+### Table 24: LNG_imports.csv
 
 | Column Name                 | Data Type | Description                                                                           |
 | --------------------------- | --------- | ------------------------------------------------------------------------------------- |
@@ -304,21 +312,21 @@ This file tell SWITCH2.0 which version of model to be called. For example: **2.0
 | `TIMESERIES`              | DATE/TEXT | The date of the LNG import measurement in the format `YYYYMMDD`.             |
 | `LNG_import_ref_quantity` | FLOAT     | The reference quantity of LNG imported in million BTU (MMBtu).                        |
 
-### Table 24: gas_disposing_cost.csv
+### Table 25: gas_disposing_cost.csv
 
 | Column Name            | Data Type | Description                                                               |
 | ---------------------- | --------- | ------------------------------------------------------------------------- |
 | `gas_disposing_cost` | FLOAT     | The cost associated with gas disposing/flaring, in dollars per MMBtu. |
 
-To consider impacts on equilibrium quantity and price for the Residential and Commercial (RC) sector from exogenously adding a new pipeline, add the following input files. The model will then take this additional pipeline as given when optimizing other investment decisions.
+To consider impacts on equilibrium quantity and price for the Residential and Commercial (RC) sector from exogenously adding a new pipeline, add the input tables **26-28**. The model will then take this additional pipeline as given when optimizing other investment decisions.
 
-### Table 25: gas_zone_cost_adder.csv
+### Table 26: gas_zone_cost_adder.csv
 
 | Column Name             | Data Type | Description                                                                                       |
 | ----------------------- | --------- | ------------------------------------------------------------------------------------------------- |
 | `GAS_ZONE_COST_ADDER` | TEXT      | The gas zones that are served by the exogenously built pipeline, where the cost adder is applied. |
 
-### Table 26: gas_lines_general_build_exogenous.csv
+### Table 27: gas_lines_general_build_exogenous.csv
 
 | Column Name             | Data Type | Description                                                                                                      |
 | ----------------------- | --------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -326,7 +334,7 @@ To consider impacts on equilibrium quantity and price for the Residential and Co
 | `gas_line_build_year` | INTEGER   | The year in which the gas line is built.                                                                         |
 | `gas_line_build_cap`  | FLOAT     | The capacity of the gas line in cubic meters per year.                                                           |
 
-### Table 27: gas_lines_directional_build_exogenous.csv
+### Table 28: gas_lines_directional_build_exogenous.csv
 
 | Column Name                 | Data Type | Description                                               |
 | --------------------------- | --------- | --------------------------------------------------------- |
@@ -337,9 +345,9 @@ To consider impacts on equilibrium quantity and price for the Residential and Co
 | `gas_line_build_cost`     | FLOAT     | The cost to build the gas line in dollars.                |
 | `gas_line_operating_life` | INTEGER   | The operating life of the gas line in years.              |
 
-The four tables below should follow standard inputs in Switch model packages.
+The four tables **29-32** follow standard inputs in Switch model packages.
 
-### Table 28: periods.csv
+### Table 29: periods.csv
 
 | Column Name           | Data Type | Description                              |
 | --------------------- | --------- | ---------------------------------------- |
@@ -347,7 +355,7 @@ The four tables below should follow standard inputs in Switch model packages.
 | `period_start`      | INTEGER   | The start year of the investment period. |
 | `period_end`        | INTEGER   | The end year of the investment period.   |
 
-### Table 29: timeseries.csv
+### Table 30: timeseries.csv
 
 | Column Name            | Data Type | Description                                                      |
 | ---------------------- | --------- | ---------------------------------------------------------------- |
@@ -357,7 +365,7 @@ The four tables below should follow standard inputs in Switch model packages.
 | `ts_num_tps`         | INTEGER   | The number of timepoints in the timeseries entry.              |
 | `ts_scale_to_period` | FLOAT     | The number of times this representative timeseries entry occurs in a period. |
 
-### Table 30: timepoints.csv
+### Table 31: timepoints.csv
 
 | Column Name      | Data Type     | Description                                                                                |
 | ---------------- | ------------- | ------------------------------------------------------------------------------------------ |
@@ -365,7 +373,7 @@ The four tables below should follow standard inputs in Switch model packages.
 | `timestamp`    | DATETIME/TEXT | The timestamp of the timepoint in the format `YYYY-MM-DD-HH:MM`.                         |
 | `timeseries`   | DATE/TEXT     | The timeseries entry associated with the timepoint in the format `YYYYMMDD`. |
 
-### Table 31: financials.csv
+### Table 32: financials.csv
 
 | Column Name             | Data Type | Description                                          |
 | ----------------------- | --------- | ---------------------------------------------------- |
