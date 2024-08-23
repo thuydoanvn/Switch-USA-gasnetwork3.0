@@ -1,9 +1,9 @@
-# Model Documentation: Switch-USA-gasnetwork3.0
+# Model Documentation: Switch-Gas
 **Thuy Doan** - [thuydoan206 at gmail dot com](mailto:thuydoan206@gmail.com)
 
 ## Introduction
 
-Switch-USA natural gas model is a free-standing model that optimizes natural gas facility and network usage and expansion with elastic demand, including all consumption sectors. The Switch-USA natural gas model minimizes the discounted total capital and operational cost of natural gas infrastructures to meet the natural gas demand at each state in the 48 U.S. contiguous states and the District of Columbia.
+Switch-Gas model is a free-standing model that optimizes natural gas facility and network usage and expansion with elastic demand, including all consumption sectors. The Switch-USA natural gas model minimizes the discounted total capital and operational cost of natural gas infrastructures to meet the natural gas demand at each state in the 48 U.S. contiguous states and the District of Columbia.
 Switch-USA natural gas model 3.0 will minimize the net total cost minus consumer welfares. The main decision variables are necessary additional capacity of underground storage, LNG facilities, gas well, and state-to-state pipelines to accommodate the gas flow between supply and demand regions over the study period. In addition, the model computes optimal daily volume of natural gas injections into and withdrawals from underground storage, LNG facilities, as well as pipeline deliveries and receipts to meet the daily demand at each state. Constraints require that the total volume of natural gas from local production, net imports, net storage withdrawals, LNG regasification, and net pipeline receipts provides adequate natural gas for local consumption during on the daily basis. The amount of natural gas in underground storage, regasified from LNG, and transmitted through interstate pipeline are constrained by the capacity of underground storage, LNG facilities, and pipeline in each time period, respectively. Imports from and exports to other countries are taken as exogenous.
 Also, pricing mechanism aims to achieve revenue neutrality over the whole system (two consumption sectors) in each period.
 
