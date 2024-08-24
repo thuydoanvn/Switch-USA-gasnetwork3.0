@@ -1,0 +1,4 @@
+gas_storage_type,gas_storage_max_cycles_per_year,gas_storage_life,gas_storage_fuel_cost
+aquifer,1,50,0.04
+depleted field,1,50,0.04
+salt cavern,12,50,0.04

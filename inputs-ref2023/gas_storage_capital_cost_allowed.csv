@@ -1,0 +1,148 @@
+GAS_ZONES,gas_storage_type,gas_storage_new_build_allowed,gas_storage_unit_cost_dmmbtu,gas_storage_efficiency,gas_store_to_release_ratio
+AL,depleted field,1,19.22,1,1
+AL,salt cavern,1,33.73,1,1
+AR,depleted field,1,19.22,1,1
+AR,salt cavern,1,33.73,1,1
+AZ,depleted field,1,19.22,1,1
+AZ,salt cavern,1,40.48,1,1
+CA,depleted field,1,19.22,1,1
+CA,salt cavern,1,40.48,1,1
+CO,depleted field,1,19.22,1,1
+CO,salt cavern,1,40.48,1,1
+CT,depleted field,0,.,1,1
+CT,salt cavern,0,.,1,1
+DC,depleted field,0,.,1,1
+DC,salt cavern,0,.,1,1
+DE,depleted field,0,.,1,1
+DE,salt cavern,0,.,1,1
+FL,depleted field,1,19.22,1,1
+FL,salt cavern,1,33.73,1,1
+GA,depleted field,0,.,1,1
+GA,salt cavern,0,.,1,1
+IA,depleted field,0,.,1,1
+IA,salt cavern,0,.,1,1
+ID,depleted field,1,19.22,1,1
+ID,salt cavern,1,40.48,1,1
+IL,depleted field,1,19.22,1,1
+IL,salt cavern,0,.,1,1
+IN,depleted field,1,19.22,1,1
+IN,salt cavern,0,.,1,1
+KS,depleted field,1,19.22,1,1
+KS,salt cavern,1,40.48,1,1
+KY,depleted field,1,19.22,1,1
+KY,salt cavern,0,.,1,1
+LA,depleted field,1,19.22,1,1
+LA,salt cavern,1,33.73,1,1
+MA,depleted field,0,.,1,1
+MA,salt cavern,0,.,1,1
+MD,depleted field,1,19.22,1,1
+MD,salt cavern,1,40.48,1,1
+ME,depleted field,0,.,1,1
+ME,salt cavern,0,.,1,1
+MI,depleted field,1,19.22,1,1
+MI,salt cavern,1,40.48,1,1
+MN,depleted field,0,.,1,1
+MN,salt cavern,0,.,1,1
+MO,depleted field,1,19.22,1,1
+MO,salt cavern,0,.,1,1
+MS,depleted field,1,19.22,1,1
+MS,salt cavern,1,33.73,1,1
+MT,depleted field,1,19.22,1,1
+MT,salt cavern,1,40.48,1,1
+NC,depleted field,0,.,1,1
+NC,salt cavern,0,.,1,1
+ND,depleted field,1,19.22,1,1
+ND,salt cavern,1,40.48,1,1
+NE,depleted field,1,19.22,1,1
+NE,salt cavern,1,40.48,1,1
+NH,depleted field,0,.,1,1
+NH,salt cavern,0,.,1,1
+NJ,depleted field,0,.,1,1
+NJ,salt cavern,0,.,1,1
+NM,depleted field,1,19.22,1,1
+NM,salt cavern,1,40.48,1,1
+NV,depleted field,1,19.22,1,1
+NV,salt cavern,1,40.48,1,1
+NY,depleted field,1,19.22,1,1
+NY,salt cavern,1,40.48,1,1
+OH,depleted field,1,19.22,1,1
+OH,salt cavern,1,40.48,1,1
+OK,depleted field,1,19.22,1,1
+OK,salt cavern,1,40.48,1,1
+OR,depleted field,1,19.22,1,1
+OR,salt cavern,0,.,1,1
+PA,depleted field,1,19.22,1,1
+PA,salt cavern,1,40.48,1,1
+RI,depleted field,0,.,1,1
+RI,salt cavern,0,.,1,1
+SC,depleted field,0,.,1,1
+SC,salt cavern,0,.,1,1
+SD,depleted field,1,19.22,1,1
+SD,salt cavern,1,40.48,1,1
+TN,depleted field,1,19.22,1,1
+TN,salt cavern,0,.,1,1
+TX,depleted field,1,19.22,1,1
+TX,salt cavern,1,33.73,1,1
+UT,depleted field,1,19.22,1,1
+UT,salt cavern,1,40.48,1,1
+VA,depleted field,1,19.22,1,1
+VA,salt cavern,1,40.48,1,1
+VT,depleted field,0,.,1,1
+VT,salt cavern,0,.,1,1
+WA,depleted field,0,.,1,1
+WA,salt cavern,0,.,1,1
+WI,depleted field,0,.,1,1
+WI,salt cavern,1,40.48,1,1
+WV,depleted field,1,19.22,1,1
+WV,salt cavern,1,40.48,1,1
+WY,depleted field,1,19.22,1,1
+WY,salt cavern,1,40.48,1,1
+AL,aquifer,1,39.8,1,1
+AZ,aquifer,1,39.8,1,1
+AR,aquifer,1,39.8,1,1
+CA,aquifer,1,39.8,1,1
+CO,aquifer,1,39.8,1,1
+CT,aquifer,0,.,1,1
+DE,aquifer,1,39.8,1,1
+DC,aquifer,0,39.8,1,1
+FL,aquifer,1,39.8,1,1
+GA,aquifer,1,39.8,1,1
+ID,aquifer,1,39.8,1,1
+IL,aquifer,1,39.8,1,1
+IN,aquifer,1,39.8,1,1
+IA,aquifer,1,39.8,1,1
+KS,aquifer,1,39.8,1,1
+KY,aquifer,1,39.8,1,1
+LA,aquifer,1,39.8,1,1
+ME,aquifer,0,.,1,1
+MD,aquifer,1,39.8,1,1
+MA,aquifer,0,.,1,1
+MI,aquifer,1,39.8,1,1
+MN,aquifer,1,39.8,1,1
+MS,aquifer,1,39.8,1,1
+MO,aquifer,1,39.8,1,1
+MT,aquifer,1,39.8,1,1
+NE,aquifer,1,39.8,1,1
+NV,aquifer,1,39.8,1,1
+NH,aquifer,0,.,1,1
+NJ,aquifer,1,39.8,1,1
+NM,aquifer,1,39.8,1,1
+NY,aquifer,1,39.8,1,1
+NC,aquifer,1,39.8,1,1
+ND,aquifer,1,39.8,1,1
+OH,aquifer,1,39.8,1,1
+OK,aquifer,1,39.8,1,1
+OR,aquifer,1,39.8,1,1
+PA,aquifer,1,39.8,1,1
+RI,aquifer,0,.,1,1
+SC,aquifer,1,39.8,1,1
+SD,aquifer,1,39.8,1,1
+TN,aquifer,1,39.8,1,1
+TX,aquifer,1,39.8,1,1
+UT,aquifer,1,39.8,1,1
+VT,aquifer,0,.,1,1
+VA,aquifer,1,39.8,1,1
+WA,aquifer,1,39.8,1,1
+WV,aquifer,1,39.8,1,1
+WI,aquifer,1,39.8,1,1
+WY,aquifer,1,39.8,1,1

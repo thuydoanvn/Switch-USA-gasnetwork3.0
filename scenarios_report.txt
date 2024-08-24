@@ -1,0 +1,23 @@
+#To solve multiple scenarios, run: switch solve-scenarios --scenario-list scenarios_report.txt
+#0. Ref2023: fixed infrastructure, exogenous demand 
+--scenario-name S1A --inputs-dir inputs-ref2023 --outputs-dir outputs-S1A --module-list modules_nondr.txt 
+
+#0b. Ref2023
+--scenario-name S1B --inputs-dir inputs-ref2023 --outputs-dir outputs-S1B --module-list modules_nondr.txt --input-alias gas_lines_predetermined_general.csv=gas_lines_predetermined_general_WVVA.csv gas_lines_predetermined_directional.csv=gas_lines_predetermined_directional_WVVA.csv gas_lines_capital_cost.csv=gas_lines_capital_cost_WVVAallowed.csv
+
+#1. Ref2023-dr: fixed infrastructure, endogenous demand with constant elasticity, and flat RC pricing (iterations)
+
+--scenario-name S2A --inputs-dir inputs-ref2023 --outputs-dir outputs-S2A --module-list modules_dr.txt --iterate-list iterate_dr.txt --dr-flat-pricing --dr-demand-module gas_constant_elasticity_demand_system_2sectors
+
+#2. Ref2023-dr-case: fixed infrastructure, endogenous demand with constant elasticity and flat RC pricing (iterations); exogenously added pipeline WV-VA with cost-adder allocated to RC price.
+# notes: make sure to set gas_line_new_build_allowed == 1 for 'WV-VA' (done in inputs-ref2023-case)
+
+--scenario-name S2B --inputs-dir inputs-ref2023-case --outputs-dir outputs-S2B --module-list modules_dr.txt --iterate-list iterate_dr.txt --dr-flat-pricing --dr-demand-module gas_constant_elasticity_demand_system_2sectors --input-alias gas_lines_capital_cost.csv=gas_lines_capital_cost_WVVAallowed.csv 
+
+#3. Ref2023-dr-expansion: infrastructure expansion, endogenous demand with constant elasticity and flat RC pricing (iterations), 
+
+--scenario-name S3A --inputs-dir inputs-ref2023 --outputs-dir outputs-S3A --module-list modules_dr.txt --iterate-list iterate_dr.txt --dr-flat-pricing --dr-demand-module gas_constant_elasticity_demand_system_2sectors --input-alias gas_lines_capital_cost.csv=gas_lines_capital_cost_allowed.csv gas_storage_capital_cost.csv=gas_storage_capital_cost_allowed.csv 
+
+#4. Ref2023-dr-expansion-case: infrastructure expansion, endogenous demand with constant elasticity and flat RC pricing (iterations); exogenously added pipeline WV-VA with cost-adder allocated to RC price.
+
+--scenario-name S3B --inputs-dir inputs-ref2023-case --outputs-dir outputs-S3B --module-list modules_dr.txt --iterate-list iterate_dr.txt --dr-flat-pricing --dr-demand-module gas_constant_elasticity_demand_system_2sectors --input-alias gas_lines_capital_cost.csv=gas_lines_capital_cost_allowed.csv gas_storage_capital_cost.csv=gas_storage_capital_cost_allowed.csv
